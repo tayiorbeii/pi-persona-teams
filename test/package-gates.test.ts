@@ -64,7 +64,7 @@ test("package installs from npm pack and rolls back without collateral files", (
   try {
     const packed = JSON.parse(execFileSync("npm", ["pack", "--pack-destination", archiveDir, "--json"], { cwd: root, encoding: "utf8" })) as Array<{ name: string; version: string }>;
     expect(packed[0].name).toBe("pi-persona-teams");
-    expect(packed[0].version).toBe("0.1.0");
+    expect(packed[0].version).toBe("0.1.1");
     const archiveName = readdirSync(archiveDir).find((file) => file.endsWith(".tgz"));
     if (!archiveName) throw new Error("npm pack did not produce an archive");
 

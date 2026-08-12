@@ -1,6 +1,6 @@
 {
   "name": "pi-persona-teams",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Independent, policy-enforced persona agents for pi-subagents.",
   "type": "module",
   "license": "MIT",
