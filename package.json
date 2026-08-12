@@ -1,0 +1,25 @@
+{
+  "name": "pi-persona-teams",
+  "version": "0.1.0",
+  "description": "Independent, policy-enforced persona agents for pi-subagents.",
+  "type": "module",
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./extensions/persona-parent.ts"],
+    "skills": ["./skills/persona-team"],
+    "subagents": { "agents": ["./agents"] }
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.82.1 <0.83.0",
+    "pi-subagents": ">=0.31.0 <0.48.0"
+  },
+  "scripts": {
+    "test": "bun test test/*.test.ts",
+    "typecheck": "bunx tsc --noEmit",
+    "verify:personas": "bun scripts/verify-personas.ts",
+    "verify:no-shared-corpus": "bun scripts/verify-no-shared-corpus.ts",
+    "copy:method": "bun scripts/copy-method-into-persona.ts",
+    "report:upstream-drift": "bun scripts/report-upstream-drift.ts"
+  },
+  "files": ["agents", "extensions", "scripts", "schemas", "skills", "README.md", "CHANGELOG.md", "LICENSE"]
+}

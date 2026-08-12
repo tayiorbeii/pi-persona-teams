@@ -1,0 +1,234 @@
+import { existsSync } from "node:fs";
+import { attestationDirectory, createAttestation, writeAttestation, type PersonaAttestation } from "./internal/attestation.ts";
+import { readChildIdentity, personaFileFromIdentity, packageRootFromChildExtension, type ChildIdentity } from "./internal/child-identity.ts";
+import { completeLedger, createLedger, activateMethod, ledgerDeficiencies, missingActivations, recordDisposition, recordPolicyEvent, setProvider, type PersonaEvidence, type PersonaLedger } from "./internal/ledger.ts";
+import { parsePersonaFile, validatePersonaFile, type PersonaFile } from "./internal/persona-file.ts";
+import { evaluateToolCall, type PolicyDecision } from "./internal/role-policy.ts";
+import { ProviderObserver, type ProviderToolDescriptor } from "./internal/provider-observer.ts";
+
+export interface PersonaContractStatus {
+  role: string;
+  runtimeName: string;
+  authority: string;
+  requiredMethods: Array<{ id: string; bodySha256: string; activated: boolean; disposition?: string }>;
+  providers: PersonaLedger["providers"];
+  deficiencies: string[];
+  repairTurns: number;
+  completionStatus: PersonaLedger["completionStatus"];
+}
+
+export interface PersonaChildAction {
+  action: "status" | "activate" | "disposition" | "complete" | "provider";
+  method?: string;
+  plannedApplication?: string;
+  disposition?: "applied" | "not_applicable";
+  evidence?: PersonaEvidence[];
+  justification?: string;
+  outputSummary?: string;
+  provider?: "contextMode" | "jcodemunch" | "native";
+  availability?: "available" | "unavailable" | "failed";
+  status?: "used" | "not_applicable" | "degraded" | "unavailable" | "pending";
+  reason?: string;
+}
+
+export interface PersonaChildResult {
+  ok: boolean;
+  message: string;
+  status?: PersonaContractStatus;
+  deficiencies?: string[];
+  attestation?: PersonaAttestation;
+  attestationPath?: string;
+  blocked?: PolicyDecision;
+}
+
+export class PersonaChildRuntime {
+  readonly identity: ChildIdentity;
+  readonly persona: PersonaFile;
+  readonly ledger: PersonaLedger;
+  readonly providerObserver: ProviderObserver;
+  private latestAttestation?: PersonaAttestation;
+  private latestAttestationPath?: string;
+  private readonly workspace: string;
+  private readonly attestationDir: string;
+
+  constructor(options: { identity: ChildIdentity; personaPath: string; workspace?: string; attestationDir?: string; toolNames?: string[]; tools?: ProviderToolDescriptor[] }) {
+    this.identity = options.identity;
+    const validation = validatePersonaFile(options.personaPath);
+    if (!validation.valid || !validation.persona) throw new Error(`persona admission failed: ${validation.errors.join("; ")}`);
+    if (validation.persona.contract.runtimeName !== options.identity.runtimeName) throw new Error("persona contract runtime identity does not match child identity");
+    this.persona = validation.persona;
+    this.ledger = createLedger(this.persona, options.identity);
+    this.providerObserver = new ProviderObserver({ toolNames: options.toolNames ?? [], tools: options.tools ?? [] });
+    this.providerObserver.sync(this.ledger);
+    this.workspace = options.workspace ?? process.cwd();
+    this.attestationDir = attestationDirectory(this.workspace, options.attestationDir);
+  }
+
+  status(): PersonaContractStatus {
+    const requiredMethods = this.persona.contract.requiredMethods.map((id) => {
+      const entry = this.ledger.methods[id];
+      return { id, bodySha256: entry.bodySha256, activated: Boolean(entry.activatedAt), disposition: entry.disposition };
+    });
+    const deficiencies = ledgerDeficiencies(this.ledger);
+    return { role: this.persona.contract.role, runtimeName: this.persona.contract.runtimeName, authority: this.persona.contract.authority, requiredMethods, providers: this.ledger.providers, deficiencies, repairTurns: this.ledger.repairTurns, completionStatus: this.ledger.completionStatus };
+  }
+
+  handle(action: PersonaChildAction): PersonaChildResult {
+    if (action.action === "status") return { ok: true, message: "persona status", status: this.status() };
+    if (action.action === "activate") {
+      if (this.ledger.completionStatus === "failed") return { ok: false, message: "persona completion is terminally failed" };
+      if (!action.method) return { ok: false, message: "method is required" };
+      const result = activateMethod(this.ledger, action.method, action.plannedApplication ?? "");
+      return { ok: result.ok, message: result.message, ...(result.ok ? { status: this.status() } : {}) };
+    }
+    if (action.action === "disposition") {
+      if (this.ledger.completionStatus === "failed") return { ok: false, message: "persona completion is terminally failed" };
+      if (!action.method || !action.disposition) return { ok: false, message: "method and disposition are required" };
+      const result = recordDisposition(this.ledger, action.method, action.disposition, action.evidence, action.justification);
+      return { ok: result.ok, message: result.message, ...(result.ok ? { status: this.status() } : {}) };
+    }
+    if (action.action === "provider") {
+      if (!action.provider || !action.status || !action.availability) return { ok: false, message: "provider, availability, and status are required" };
+      if (action.status === "not_applicable" && (!action.reason || action.reason.trim().length < 12)) return { ok: false, message: "provider non-use requires a specific reason" };
+      setProvider(this.ledger, action.provider, { availability: action.availability, status: action.status, reason: action.reason?.trim() });
+      return { ok: true, message: `provider ${action.provider} recorded`, status: this.status() };
+    }
+    if (action.action === "complete") {
+      const result = completeLedger(this.ledger, action.outputSummary ?? "");
+      if (!result.ok) {
+        if (this.ledger.completionStatus === "failed") {
+          const failure = this.persistFailureAttestation();
+          return { ok: false, message: result.message, deficiencies: result.deficiencies, status: this.status(), attestation: failure.attestation, attestationPath: failure.path };
+        }
+        return { ok: false, message: result.message, deficiencies: result.deficiencies, status: this.status() };
+      }
+      this.latestAttestation = createAttestation(this.ledger);
+      this.latestAttestationPath = writeAttestation(this.latestAttestation, this.attestationDir);
+      return { ok: true, message: "persona completion accepted", status: this.status(), attestation: this.latestAttestation, attestationPath: this.latestAttestationPath };
+    }
+    return { ok: false, message: `unsupported action: ${String(action.action)}` };
+  }
+
+  reprobeProviders(toolNames: string[], tools: ProviderToolDescriptor[] = []): void {
+    this.providerObserver.reprobe({ toolNames, tools });
+    this.providerObserver.sync(this.ledger);
+  }
+
+  toolCall(toolName: string, input: Record<string, unknown> = {}): PolicyDecision {
+    const fingerprint = toolFingerprint(toolName, input);
+    if (missingActivations(this.ledger).length === 0 && isNativeCodeRead(toolName, input) && this.providerObserver.availability("jcodemunch") === "available") {
+      if (this.providerObserver.shouldRedirect("jcodemunch", fingerprint)) {
+        const reason = "jCodeMunch is available for this code-orientation operation; use it before broad native exploration";
+        recordPolicyEvent(this.ledger, { toolName, inputSummary: fingerprint.slice(0, 160), action: "blocked", reason });
+        return { allowed: false, reason, substantive: true };
+      }
+      this.providerObserver.allowFallback("jcodemunch", fingerprint);
+    }
+    const decision = evaluateToolCall(this.ledger, { toolName, input }, this.workspace);
+    if (decision.allowed) {
+      const provider = this.providerObserver.providerForTool(toolName);
+      if (provider) this.providerObserver.markUsed(provider, "provider tool call observed");
+      else if (/^(?:read|read_file|grep|find|glob|bash|shell|git_)/i.test(toolName)) this.ledger.providers.native.uses += 1;
+      this.providerObserver.sync(this.ledger);
+    }
+    return decision;
+  }
+
+  providerResult(toolName: string, input: Record<string, unknown> = {}, failed: boolean, reason?: string): void {
+    this.providerObserver.observeToolResult(toolName, toolFingerprint(toolName, input), failed, reason);
+    this.providerObserver.sync(this.ledger);
+  }
+
+  attestation(): PersonaAttestation | undefined {
+    return this.latestAttestation;
+  }
+
+  persistFailureAttestation(): { attestation: PersonaAttestation; path: string } {
+    const attestation = createAttestation(this.ledger);
+    const path = writeAttestation(attestation, this.attestationDir);
+    return { attestation, path };
+  }
+}
+
+function toolFingerprint(toolName: string, input: Record<string, unknown>): string {
+  return `${toolName}:${JSON.stringify(input, Object.keys(input).sort())}`;
+}
+
+function isNativeCodeRead(toolName: string, input: Record<string, unknown>): boolean {
+  if (!/^(?:read|read_file|grep|find|glob|search_code)$/i.test(toolName)) return false;
+  const path = ["path", "filePath", "filename"].map((key) => input[key]).find((value): value is string => typeof value === "string");
+  return Boolean(path && /\.(?:c|cc|cpp|cs|go|java|js|jsx|mjs|py|rb|rs|swift|ts|tsx|vue|svelte)$/i.test(path));
+}
+
+export function createPersonaChildRuntimeFromEnvironment(options: { moduleUrl?: string; environment?: Record<string, string | undefined>; workspace?: string; attestationDir?: string; toolNames?: string[]; tools?: ProviderToolDescriptor[] } = {}): PersonaChildRuntime {
+  const environment = options.environment ?? process.env;
+  const identity = readChildIdentity(environment);
+  const packageRoot = packageRootFromChildExtension(options.moduleUrl ?? import.meta.url);
+  const personaPath = personaFileFromIdentity(identity, packageRoot);
+  if (!existsSync(personaPath)) throw new Error(`canonical persona file does not exist: ${personaPath}`);
+  return new PersonaChildRuntime({ identity, personaPath, workspace: options.workspace, attestationDir: options.attestationDir ?? environment.PI_PERSONA_ATTESTATION_DIR, toolNames: options.toolNames, tools: options.tools });
+}
+
+function toolParameters(): Record<string, unknown> {
+  return {
+    type: "object",
+    properties: {
+      action: { type: "string", enum: ["status", "activate", "disposition", "complete", "provider"] },
+      method: { type: "string" },
+      plannedApplication: { type: "string" },
+      disposition: { type: "string", enum: ["applied", "not_applicable"] },
+      evidence: { type: "array", items: { type: "object" } },
+      justification: { type: "string" },
+      outputSummary: { type: "string" },
+      provider: { type: "string", enum: ["contextMode", "jcodemunch", "native"] },
+      availability: { type: "string" },
+      status: { type: "string" },
+      reason: { type: "string" },
+    },
+    required: ["action"],
+  };
+}
+
+export default function personaChildExtension(pi: any): void {
+  let runtime: PersonaChildRuntime | undefined;
+  let startupError: string | undefined;
+  try {
+    const allTools = typeof pi.getAllTools === "function" ? pi.getAllTools().map((tool: { name?: string }) => tool.name ?? "") : [];
+    runtime = createPersonaChildRuntimeFromEnvironment({ toolNames: allTools });
+  } catch (error) {
+    startupError = error instanceof Error ? error.message : String(error);
+  }
+  pi.registerTool({
+    name: "persona_contract",
+    label: "Persona Contract",
+    description: "Activate and account for the selected self-contained persona contract.",
+    parameters: toolParameters(),
+    async execute(_toolCallId: string, params: PersonaChildAction) {
+      if (startupError || !runtime) return { content: [{ type: "text", text: `Persona admission failed: ${startupError ?? "unknown startup error"}` }], details: { ok: false, message: startupError ?? "unknown startup error" } };
+      const result = runtime.handle(params);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
+    },
+  });
+  pi.on("session_start", async () => {
+    if (runtime && typeof pi.getAllTools === "function") {
+      const tools = pi.getAllTools().map((tool: { name?: string; description?: string; source?: string; provenance?: string }) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }));
+      runtime.reprobeProviders(tools.map((tool: ProviderToolDescriptor) => tool.name ?? ""), tools);
+    }
+  });
+  pi.on("tool_call", async (event: { toolName: string; input?: Record<string, unknown> }) => {
+    if (event.toolName === "persona_contract") return undefined;
+    if (startupError || !runtime) return { block: true, reason: `Persona admission failed: ${startupError ?? "unknown startup error"}` };
+    const decision = runtime.toolCall(event.toolName, event.input ?? {});
+    return decision.allowed ? undefined : { block: true, reason: decision.reason };
+  });
+  pi.on("tool_result", async (event: { toolName?: string; input?: Record<string, unknown>; result?: unknown; isError?: boolean; error?: string }) => {
+    if (!runtime || !event.toolName) return undefined;
+    const result = event.result as { isError?: boolean; error?: string } | undefined;
+    const failed = event.isError === true || Boolean(event.error) || result?.isError === true;
+    runtime.providerResult(event.toolName, event.input ?? {}, failed, event.error ?? result?.error);
+    return undefined;
+  });
+  pi.on("session_shutdown", async () => {
+    if (runtime && !runtime.attestation()) runtime.persistFailureAttestation();
+  });
+}

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pi.persona-attestation/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "runtimeName",
+    "role",
+    "runId",
+    "childIndex",
+    "contractDigest",
+    "agentFileDigest",
+    "methods",
+    "providers",
+    "policy",
+    "issuedAt"
+  ],
+  "properties": {
+    "schema": { "const": "pi.persona-attestation/v1" },
+    "status": { "enum": ["passed", "failed"] },
+    "runtimeName": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "childIndex": { "type": "integer", "minimum": 0 },
+    "contractDigest": { "type": "string", "minLength": 1 },
+    "agentFileDigest": { "type": "string", "minLength": 1 },
+    "launchContractDigest": { "type": "string", "minLength": 1 },
+    "methods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "bodySha256", "activated"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "bodySha256": { "type": "string", "minLength": 1 },
+          "activated": { "type": "boolean" },
+          "plannedApplication": { "type": "string" },
+          "disposition": { "enum": ["applied", "not_applicable"] },
+          "evidence": { "type": "array" },
+          "justification": { "type": "string" }
+        }
+      }
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextMode", "jcodemunch", "native"],
+      "properties": {
+        "contextMode": { "$ref": "#/$defs/provider" },
+        "jcodemunch": { "$ref": "#/$defs/provider" },
+        "native": { "$ref": "#/$defs/provider" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockedCalls", "unresolvedViolations", "repairTurns"],
+      "properties": {
+        "blockedCalls": { "type": "integer", "minimum": 0 },
+        "unresolvedViolations": { "type": "integer", "minimum": 0 },
+        "repairTurns": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "issuedAt": { "type": "string", "format": "date-time" },
+    "failureReasons": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "status", "uses", "failures", "fallbackUses"],
+      "properties": {
+        "availability": { "enum": ["available", "unavailable", "failed"] },
+        "status": { "enum": ["used", "not_applicable", "degraded", "unavailable", "pending"] },
+        "uses": { "type": "integer", "minimum": 0 },
+        "failures": { "type": "integer", "minimum": 0 },
+        "fallbackUses": { "type": "integer", "minimum": 0 },
+        "reason": { "type": "string" }
+      }
+    }
+  }
+}
