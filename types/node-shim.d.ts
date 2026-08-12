@@ -15,6 +15,9 @@ declare module "node:path" {
   export const relative: any;
   export const resolve: any;
 }
+declare module "node:child_process" {
+  export const execFileSync: any;
+}
 declare module "node:crypto" {
   export const createHash: any;
 }

@@ -17,6 +17,12 @@ test("package exposes exactly ten agent files and no shared corpus", () => {
   expect(execFileSync("bun", ["run", "verify:no-shared-corpus"], { cwd: root, encoding: "utf8" })).toContain("PASS");
 });
 
+test("method-copy provenance remains repository-relative", () => {
+  const script = readFileSync(join(root, "scripts", "copy-method-into-persona.ts"), "utf8");
+  expect(script).toContain("sourcePath: portableSourcePath");
+  expect(script).not.toContain("sourcePath: resolve(sourcePath)");
+});
+
 test("package metadata and dry-run archive expose the installable runtime", () => {
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
     name: string;
