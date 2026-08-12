@@ -2,29 +2,49 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { listPersonas, personaDoctor, runPersona } from "../extensions/internal/persona-facade.ts";
 import { PersonaChildRuntime } from "../extensions/persona-child.ts";
-import { validatePersonaFile } from "../extensions/internal/persona-file.ts";
+import { sha256, validatePersonaFile } from "../extensions/internal/persona-file.ts";
 import { ProviderObserver } from "../extensions/internal/provider-observer.ts";
 
 const root = join(import.meta.dir, "..");
 const em = join(root, "agents", "engineering-manager.md");
 const methods = ["persona-team-domain-driven-design", "persona-team-system-design", "persona-team-ddia-systems", "persona-team-clean-architecture"];
+const canonicalDiscoveries = [
+  "persona-team.founder-ceo",
+  "persona-team.product-designer",
+  "persona-team.devex-lead",
+  "persona-team.engineering-manager",
+  "persona-team.implementation-engineer",
+  "persona-team.staff-reviewer",
+  "persona-team.security-officer",
+  "persona-team.qa-lead",
+  "persona-team.release-engineer",
+  "persona-team.retro-ops-manager",
+].map((runtimeName) => ({ runtimeName, source: "package" as const, packageName: "persona-team" }));
 
 test("facade list and doctor work with neither optional provider", async () => {
   expect(listPersonas(root)).toHaveLength(10);
-  const doctor = await personaDoctor({ packageRoot: root, workspace: root, discover: () => [{ runtimeName: "persona-team.engineering-manager", source: "package", packageName: "persona-team" }], toolNames: [], environment: {} });
+  const doctor = await personaDoctor({ packageRoot: root, workspace: root, discover: () => canonicalDiscoveries, toolNames: [], environment: {} });
   expect(doctor.baselineReady).toBe(true);
   expect(doctor.providers.contextMode.availability).toBe("unavailable");
   expect(doctor.providers.jcodemunch.availability).toBe("unavailable");
 });
 
 test("facade accepts only dual persona and ordinary acceptance", async () => {
-  const child = new PersonaChildRuntime({ identity: { runtimeName: "persona-team.engineering-manager", runId: "facade-run", childIndex: 0 }, personaPath: em, workspace: root, attestationDir: join(root, ".tmp-attestations") });
+  const launchContractDigest = sha256(JSON.stringify({
+    agent: "persona-team.engineering-manager",
+    task: "Produce a bounded engineering plan.",
+    context: "fresh",
+    cwd: root,
+    childExtension: join(root, "extensions", "persona-child.ts"),
+  }));
+  const identity = { runtimeName: "persona-team.engineering-manager", runId: "facade-run", childIndex: 0, launchContractDigest };
+  const child = new PersonaChildRuntime({ identity, personaPath: em, workspace: root, attestationDir: join(root, ".tmp-attestations") });
   for (const method of methods) child.handle({ action: "activate", method, plannedApplication: `Use ${method} to shape the requested plan.` });
   for (const method of methods) child.handle({ action: "disposition", method, disposition: "applied", evidence: [{ kind: "artifact-section", path: "docs/plans/engineering.md", summary: `Evidence records ${method} application.` }] });
   const complete = child.handle({ action: "complete", outputSummary: "Plan produced." });
-  const accepted = await runPersona({ packageRoot: root, workspace: root, delegate: async () => ({ runId: "facade-run", childIndex: 0, output: "Plan produced.", attestation: complete.attestation, ordinaryAccepted: true }) }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
+  const accepted = await runPersona({ packageRoot: root, workspace: root, delegate: async () => ({ runId: "facade-run", childIndex: 0, output: "Plan produced.", attestation: complete.attestation, launchContractDigest: complete.attestation?.launchContractDigest, ordinaryAccepted: true }) }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
   expect(accepted.accepted).toBe(true);
-  const rejected = await runPersona({ packageRoot: root, workspace: root, delegate: async () => ({ runId: "facade-run", childIndex: 0, attestation: complete.attestation, ordinaryAccepted: false, ordinaryAcceptanceReason: "artifact missing" }) }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
+  const rejected = await runPersona({ packageRoot: root, workspace: root, delegate: async () => ({ runId: "facade-run", childIndex: 0, attestation: complete.attestation, launchContractDigest: complete.attestation?.launchContractDigest, ordinaryAccepted: false, ordinaryAcceptanceReason: "artifact missing" }) }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
   expect(rejected.accepted).toBe(false);
 });
 

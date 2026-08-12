@@ -1,4 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import * as nodeFs from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import type { PersonaFile, Disposition, EmbeddedMethod } from "./persona-file.ts";
 
@@ -82,9 +84,12 @@ export interface LedgerPersistenceOptions {
 }
 
 const ledgerPaths = new WeakMap<PersonaLedger, string>();
+const fs = nodeFs as Record<string, (...args: any[]) => any>;
+let temporarySequence = 0;
 
 function safeLedgerToken(value: string): string {
-  return value.replace(/[^A-Za-z0-9._-]/g, "_");
+  const sanitized = value.replace(/[^A-Za-z0-9._-]/g, "_");
+  return `${sanitized}-${createHash("sha256").update(value, "utf8").digest("hex").slice(0, 16)}`;
 }
 
 export function ledgerPersistencePath(identity: PersonaIdentity, options: LedgerPersistenceOptions = {}): string {
@@ -93,36 +98,47 @@ export function ledgerPersistencePath(identity: PersonaIdentity, options: Ledger
   return join(directory, `${safeLedgerToken(identity.runId)}-${identity.childIndex}.json`);
 }
 
+function assertRegularFinalPath(path: string): void {
+  try {
+    if (fs.lstatSync(path).isSymbolicLink()) throw new Error(`refusing to replace symbolic link: ${path}`);
+  } catch (error) {
+    if ((error as { code?: string }).code !== "ENOENT") throw error;
+  }
+}
+
+function atomicWriteJson(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  assertRegularFinalPath(path);
+  const temporary = join(dirname(path), `.${path.split(/[\\/]/).pop()}.${Date.now()}.${temporarySequence++}.${createHash("sha256").update(path).digest("hex").slice(0, 8)}.tmp`);
+  let descriptor: number | undefined;
+  try {
+    descriptor = fs.openSync(temporary, "wx", 0o600);
+    writeFileSync(descriptor, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    fs.fsyncSync(descriptor);
+    fs.closeSync(descriptor);
+    descriptor = undefined;
+    assertRegularFinalPath(path);
+    fs.renameSync(temporary, path);
+  } finally {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+    try {
+      fs.unlinkSync(temporary);
+    } catch (error) {
+      if ((error as { code?: string }).code !== "ENOENT") throw error;
+    }
+  }
+}
+
 function persistBoundLedger(ledger: PersonaLedger): void {
   const path = ledgerPaths.get(ledger);
   if (!path) return;
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
-}
-
-function validPersistedLedger(value: unknown, persona: PersonaFile, identity: PersonaIdentity): value is PersonaLedger {
-  if (!value || typeof value !== "object") return false;
-  const ledger = value as Partial<PersonaLedger>;
-  if (ledger.schema !== "pi.persona-ledger/v1" || ledger.runtimeName !== identity.runtimeName || ledger.runId !== identity.runId || ledger.childIndex !== identity.childIndex) return false;
-  if (ledger.role !== persona.contract.role || ledger.contractDigest !== persona.contractDigest || ledger.agentFileDigest !== persona.agentFileDigest) return false;
-  const expectedLaunchDigest = identity.launchContractDigest ?? process.env.PI_SUBAGENT_LAUNCH_CONTRACT_DIGEST;
-  if (expectedLaunchDigest !== undefined && ledger.launchContractDigest !== expectedLaunchDigest) return false;
-  if (!ledger.methods || typeof ledger.methods !== "object" || !ledger.providers || typeof ledger.providers !== "object" || !Array.isArray(ledger.policyEvents)) return false;
-  if (!Number.isInteger(ledger.repairTurns) || !Number.isInteger(ledger.maxRepairTurns) || !["open", "passed", "failed"].includes(ledger.completionStatus ?? "")) return false;
-  const requiredIds = new Set(persona.methods.map((method) => method.id));
-  for (const method of persona.methods) {
-    const entry = ledger.methods[method.id];
-    if (!entry || entry.bodySha256 !== method.bodySha256) return false;
-  }
-  if (Object.keys(ledger.methods).some((id) => !requiredIds.has(id))) return false;
-  return true;
+  atomicWriteJson(path, ledger);
 }
 
 export function persistLedger(ledger: PersonaLedger, path = ledgerPaths.get(ledger)): string | undefined {
   if (!path) return undefined;
   ledgerPaths.set(ledger, path);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
+  atomicWriteJson(path, ledger);
   return path;
 }
 
@@ -136,9 +152,12 @@ export function restoreLedger(persona: PersonaFile, identity: PersonaIdentity, o
   } catch (error) {
     throw new Error(`persona ledger restore failed: ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (!validPersistedLedger(parsed, persona, identity)) throw new Error("persona ledger restore failed: persisted identity, contract, or method hashes do not match");
-  const ledger = parsed as PersonaLedger;
-  ledger.maxRepairTurns = persona.contract.completion.maxRepairTurns;
+  let ledger: PersonaLedger;
+  try {
+    ledger = restoreLedgerSnapshot(parsed, persona, identity);
+  } catch (error) {
+    throw new Error(`persona ledger restore failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
   ledgerPaths.set(ledger, path);
   return ledger;
 }
@@ -163,13 +182,10 @@ function providerDefault(): ProviderLedger {
   return { availability: "unavailable", status: "unavailable", uses: 0, failures: 0, fallbackUses: 0 };
 }
 
-export function createLedger(persona: PersonaFile, identity: PersonaIdentity, options: LedgerPersistenceOptions = {}): PersonaLedger {
-  const persistenceEnabled = Boolean(options.path || process.env.PI_PERSONA_LEDGER_DIR || process.env.PI_PERSONA_LEDGER_PERSIST === "1" || process.env.PI_SUBAGENT_RUN_ID === identity.runId);
-  const restored = persistenceEnabled ? restoreLedger(persona, identity, options) : undefined;
-  if (restored) return restored;
+function freshLedger(persona: PersonaFile, identity: PersonaIdentity): PersonaLedger {
   const methods: Record<string, MethodLedgerEntry> = {};
   for (const method of persona.methods) methods[method.id] = { bodySha256: method.bodySha256 };
-  const ledger: PersonaLedger = {
+  return {
     schema: "pi.persona-ledger/v1",
     runtimeName: identity.runtimeName,
     role: persona.contract.role,
@@ -186,6 +202,13 @@ export function createLedger(persona: PersonaFile, identity: PersonaIdentity, op
     maxRepairTurns: persona.contract.completion.maxRepairTurns,
     completionStatus: "open",
   };
+}
+
+export function createLedger(persona: PersonaFile, identity: PersonaIdentity, options: LedgerPersistenceOptions = {}): PersonaLedger {
+  const persistenceEnabled = Boolean(options.path || process.env.PI_PERSONA_LEDGER_DIR || process.env.PI_PERSONA_LEDGER_PERSIST === "1" || process.env.PI_SUBAGENT_RUN_ID === identity.runId);
+  const restored = persistenceEnabled ? restoreLedger(persona, identity, options) : undefined;
+  if (restored) return restored;
+  const ledger = freshLedger(persona, identity);
   if (persistenceEnabled) {
     ledgerPaths.set(ledger, ledgerPersistencePath(identity, options));
     persistLedger(ledger);
@@ -337,11 +360,11 @@ function persistedEvidence(value: unknown, method: string): PersonaEvidence[] | 
     }
     const evidence: PersonaEvidence = { kind: entry.kind as PersonaEvidence["kind"], summary: entry.summary };
     if (entry.path !== undefined) {
-      if (typeof entry.path !== "string") throw new Error(`invalid persisted evidence path: ${method}[${index}]`);
+      if (typeof entry.path !== "string" || !entry.path.trim()) throw new Error(`invalid persisted evidence path: ${method}[${index}]`);
       evidence.path = entry.path;
     }
     if (entry.locator !== undefined) {
-      if (typeof entry.locator !== "string") throw new Error(`invalid persisted evidence locator: ${method}[${index}]`);
+      if (typeof entry.locator !== "string" || !entry.locator.trim()) throw new Error(`invalid persisted evidence locator: ${method}[${index}]`);
       evidence.locator = entry.locator;
     }
     return evidence;
@@ -370,7 +393,7 @@ export function restoreLedgerSnapshot(snapshot: string | unknown, persona: Perso
   const state = persistedRecord(value);
   if (!state || state.schema !== "pi.persona-ledger/v1") throw new Error("invalid persisted persona ledger schema");
 
-  const expected = createLedger(persona, identity);
+  const expected = freshLedger(persona, identity);
   for (const [field, expectedValue] of Object.entries({
     runtimeName: expected.runtimeName,
     role: expected.role,
@@ -379,6 +402,7 @@ export function restoreLedgerSnapshot(snapshot: string | unknown, persona: Perso
     contractDigest: expected.contractDigest,
     agentFileDigest: expected.agentFileDigest,
     authority: expected.authority,
+    launchContractDigest: expected.launchContractDigest,
     maxRepairTurns: expected.maxRepairTurns,
   })) {
     if (state[field] !== expectedValue) throw new Error(`persisted ledger ${field} mismatch`);
@@ -413,6 +437,12 @@ export function restoreLedgerSnapshot(snapshot: string | unknown, persona: Perso
       if (typeof entry.justification !== "string" || !entry.justification.trim()) throw new Error(`invalid persisted justification: ${method.id}`);
       restored.justification = entry.justification;
     }
+    if ((restored.activatedAt === undefined) !== (restored.plannedApplication === undefined)) throw new Error(`inconsistent persisted activation: ${method.id}`);
+    if (restored.disposition && !restored.activatedAt) throw new Error(`persisted disposition without activation: ${method.id}`);
+    if (restored.disposition === "applied" && (!restored.evidence || restored.evidence.length === 0)) throw new Error(`applied persisted disposition has no evidence: ${method.id}`);
+    if (restored.disposition === "not_applicable" && (!restored.justification || restored.justification.trim().length < 12)) throw new Error(`not_applicable persisted disposition has no justification: ${method.id}`);
+    if (restored.disposition !== "applied" && restored.evidence !== undefined) throw new Error(`persisted evidence without applied disposition: ${method.id}`);
+    if (restored.disposition !== "not_applicable" && restored.justification !== undefined) throw new Error(`persisted justification without not_applicable disposition: ${method.id}`);
     methods[method.id] = restored;
   }
 
@@ -460,8 +490,12 @@ export function restoreLedgerSnapshot(snapshot: string | unknown, persona: Perso
   if (completionStatus !== "open" && completionStatus !== "passed" && completionStatus !== "failed") throw new Error("invalid persisted completion status");
   const repairTurns = persistedInteger(state.repairTurns, "repairTurns");
   const completionDeficiencies = state.completionDeficiencies;
-  if (completionDeficiencies !== undefined && (!Array.isArray(completionDeficiencies) || completionDeficiencies.some((item) => typeof item !== "string"))) throw new Error("invalid persisted completion deficiencies");
-  if (state.outputSummary !== undefined && typeof state.outputSummary !== "string") throw new Error("invalid persisted output summary");
+  if (completionDeficiencies !== undefined && (!Array.isArray(completionDeficiencies) || completionDeficiencies.length === 0 || completionDeficiencies.some((item) => typeof item !== "string" || !item.trim()))) throw new Error("invalid persisted completion deficiencies");
+  if (state.outputSummary !== undefined && (typeof state.outputSummary !== "string" || !state.outputSummary.trim())) throw new Error("invalid persisted output summary");
+  if (completionStatus === "passed" && state.outputSummary === undefined) throw new Error("passed persisted ledger has no output summary");
+  if (completionStatus === "passed" && completionDeficiencies !== undefined) throw new Error("passed persisted ledger has completion deficiencies");
+  if (completionStatus === "failed" && completionDeficiencies === undefined) throw new Error("failed persisted ledger has no completion deficiencies");
+  if (repairTurns > expected.maxRepairTurns) throw new Error("persisted ledger repairTurns exceeds maximum");
 
   return {
     ...expected,

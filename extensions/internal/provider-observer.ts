@@ -27,21 +27,65 @@ export interface ProviderProbeInput {
   environment?: Record<string, string | undefined>;
 }
 
-function hasTool(toolNames: string[], patterns: RegExp[]): boolean {
-  return toolNames.some((name) => patterns.some((pattern) => pattern.test(name)));
+const PROVIDER_TOOL_NAMES: Record<ProviderName, ReadonlySet<string>> = {
+  contextMode: new Set([
+    "ctx_execute",
+    "ctx_execute_file",
+    "ctx_index",
+    "ctx_search",
+    "ctx_fetch_and_index",
+    "ctx_batch_execute",
+    "context-mode.search",
+  ]),
+  jcodemunch: new Set([
+    "jcodemunch_get_file_outline",
+    "jcodemunch_get_symbol_source",
+    "jcodemunch_search_symbols",
+    "jcodemunch_find_importers",
+    "jcodemunch_find_references",
+    "jcodemunch_get_context_bundle",
+    "jcodemunch_plan_turn",
+    "jcodemunch_get_blast_radius",
+    "jcodemunch_get_ranked_context",
+    "jcodemunch_assemble_task_context",
+    "jcodemunch_get_changed_symbols",
+  ]),
+};
+
+function providerForToolName(toolName: string): ProviderName | undefined {
+  const normalized = toolName.trim().toLowerCase();
+  if (PROVIDER_TOOL_NAMES.contextMode.has(normalized)) return "contextMode";
+  if (PROVIDER_TOOL_NAMES.jcodemunch.has(normalized)) return "jcodemunch";
+  return undefined;
 }
 
-function providerSearchText(input: ProviderProbeInput): string[] {
-  const names = [...(input.toolNames ?? [])];
-  const descriptors = [...(input.tools ?? [])];
-  return [...names, ...descriptors.flatMap((tool) => [tool.name, tool.description, tool.source, tool.provenance].filter((value): value is string => Boolean(value)))];
+const TRUSTED_PROVIDER_PROVENANCE: Record<ProviderName, ReadonlySet<string>> = {
+  contextMode: new Set(["context-mode", "context_mode", "contextmode", "mcp:context-mode"]),
+  jcodemunch: new Set(["jcodemunch", "jcode-munch", "jcode_munch", "mcp:jcodemunch"]),
+};
+
+function trustedDescriptorProvider(tool: ProviderToolDescriptor): ProviderName | undefined {
+  const provider = providerForToolName(tool.name ?? "");
+  if (!provider) return undefined;
+  const provenance = [tool.source, tool.provenance]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim().toLowerCase());
+  return provenance.some((value) => TRUSTED_PROVIDER_PROVENANCE[provider].has(value)) ? provider : undefined;
+}
+
+function observedToolNames(input: ProviderProbeInput): string[] {
+  const registryNames = [...(input.toolNames ?? [])];
+  const trustedDescriptorNames = [...(input.tools ?? [])]
+    .filter((tool) => trustedDescriptorProvider(tool) !== undefined)
+    .map((tool) => tool.name ?? "");
+  return [...registryNames, ...trustedDescriptorNames];
 }
 
 export function detectProviders(input: ProviderProbeInput = {}): Record<ProviderName, ProviderObservation> {
-  const names = providerSearchText(input);
+  const names = observedToolNames(input);
   const env = input.environment ?? (typeof process !== "undefined" ? process.env : {});
-  const contextAvailable = env.PI_CONTEXT_MODE_AVAILABLE === "1" || hasTool(names, [/context[-_]?mode/i, /ctx_(?:execute|search|fetch|index)/i, /context provider/i]);
-  const codeAvailable = env.PI_JCODEMUNCH_AVAILABLE === "1" || hasTool(names, [/jcode/i, /jcodemunch/i, /code retrieval provider/i]);
+  const contextAvailable = env.PI_CONTEXT_MODE_AVAILABLE === "1" || names.some((name) => providerForToolName(name) === "contextMode");
+  const codeAvailable = env.PI_JCODEMUNCH_AVAILABLE === "1" || names.some((name) => providerForToolName(name) === "jcodemunch");
   return {
     contextMode: { name: "contextMode", availability: contextAvailable ? "available" : "unavailable", status: contextAvailable ? "not_applicable" : "unavailable", uses: 0, failures: 0, fallbackUses: 0, reason: contextAvailable ? undefined : "provider not installed or not visible in the runtime registry" },
     jcodemunch: { name: "jcodemunch", availability: codeAvailable ? "available" : "unavailable", status: codeAvailable ? "not_applicable" : "unavailable", uses: 0, failures: 0, fallbackUses: 0, reason: codeAvailable ? undefined : "provider not installed or not visible in the runtime registry" },
@@ -64,14 +108,18 @@ export function observeProviders(ledger: PersonaLedger, observations: Record<Pro
 
 export class ProviderObserver {
   readonly observations: Record<ProviderName, ProviderObservation>;
-  private readonly routing = new Map<string, { redirected: boolean; providerFailed: boolean; fallbackGranted: boolean }>();
+  private readonly trustedToolNames = new Set<string>();
+  private readonly routing = new Map<string, { redirected: boolean; providerAttempted: boolean; providerFailed: boolean; fallbackGranted: boolean }>();
+  private readonly attempts = new Map<string, { provider: ProviderName; routeKey?: string }>();
 
   constructor(input: ProviderProbeInput = {}) {
     this.observations = detectProviders(input);
+    for (const name of observedToolNames(input)) this.trustedToolNames.add(name.trim().toLowerCase());
   }
 
   refresh(input: ProviderProbeInput = {}): void {
     const detected = detectProviders(input);
+    for (const name of observedToolNames(input)) this.trustedToolNames.add(name.trim().toLowerCase());
     for (const name of ["contextMode", "jcodemunch"] as const) {
       if (detected[name].availability === "available") {
         this.observations[name].availability = "available";
@@ -89,13 +137,12 @@ export class ProviderObserver {
     return this.observations[name].availability;
   }
 
-
   markUsed(name: ProviderName, reason?: string): void {
     const item = this.observations[name];
     item.availability = "available";
     item.uses += 1;
-    item.status = "used";
-    item.reason = reason;
+    item.status = item.failures > 0 ? "degraded" : "used";
+    if (item.failures === 0) item.reason = reason;
   }
 
   markNotApplicable(name: ProviderName, reason: string): void {
@@ -106,6 +153,7 @@ export class ProviderObserver {
 
   markFailure(name: ProviderName, reason: string): void {
     const item = this.observations[name];
+    if (item.uses <= item.failures) item.uses = item.failures + 1;
     item.failures += 1;
     item.availability = "failed";
     item.status = "degraded";
@@ -116,12 +164,21 @@ export class ProviderObserver {
     return `${name}:${fingerprint}`;
   }
 
+  private attemptKey(name: ProviderName, fingerprint: string, correlationId?: string): string {
+    return `${name}:${correlationId ?? fingerprint}`;
+  }
+
+  private pendingRoute(name: ProviderName): string | undefined {
+    return [...this.routing.entries()].reverse().find(([key, state]) =>
+      key.startsWith(`${name}:`) && state.redirected && !state.providerAttempted && !state.providerFailed && !state.fallbackGranted
+    )?.[0];
+  }
+
   allowFallback(name: ProviderName, fingerprint: string): boolean {
     const key = this.routeKey(name, fingerprint);
-    const state = this.routing.get(key) ?? { redirected: false, providerFailed: false, fallbackGranted: false };
-    if (!state.providerFailed || state.fallbackGranted) return false;
+    const state = this.routing.get(key);
+    if (!state?.redirected || !state.providerAttempted || !state.providerFailed || state.fallbackGranted) return false;
     state.fallbackGranted = true;
-    this.routing.set(key, state);
     this.observations[name].fallbackUses += 1;
     this.observations[name].status = "degraded";
     return true;
@@ -129,32 +186,55 @@ export class ProviderObserver {
 
   shouldRedirect(name: ProviderName, fingerprint: string): boolean {
     const key = this.routeKey(name, fingerprint);
-    const state = this.routing.get(key) ?? { redirected: false, providerFailed: false, fallbackGranted: false };
-    if (state.providerFailed || state.redirected) return false;
-    state.redirected = true;
-    this.routing.set(key, state);
+    const state = this.routing.get(key);
+    if (state) return false;
+    this.routing.set(key, { redirected: true, providerAttempted: false, providerFailed: false, fallbackGranted: false });
     return true;
   }
 
   failed(name: ProviderName, fingerprint: string, reason: string): void {
     const key = this.routeKey(name, fingerprint);
-    const state = this.routing.get(key) ?? { redirected: false, providerFailed: false, fallbackGranted: false };
+    const state = this.routing.get(key);
+    if (!state?.redirected || state.providerFailed || state.fallbackGranted) return;
+    state.providerAttempted = true;
     state.providerFailed = true;
-    this.routing.set(key, state);
     this.markFailure(name, reason);
   }
 
   providerForTool(toolName: string): ProviderName | undefined {
-    if (/context[-_]?mode|ctx_(?:execute|search|fetch|index)/i.test(toolName)) return "contextMode";
-    if (/jcode|jcodemunch/i.test(toolName)) return "jcodemunch";
-    return undefined;
+    const normalized = toolName.trim().toLowerCase();
+    const provider = providerForToolName(normalized);
+    if (!provider) return undefined;
+    const providerEstablished = this.observations[provider].availability !== "unavailable";
+    return providerEstablished || this.trustedToolNames.has(normalized) ? provider : undefined;
   }
 
-  observeToolResult(toolName: string, fingerprint: string, failed: boolean, reason?: string): void {
+  observeToolCall(toolName: string, fingerprint: string, correlationId?: string): ProviderName | undefined {
+    const provider = this.providerForTool(toolName);
+    if (!provider) return undefined;
+    const key = this.attemptKey(provider, fingerprint, correlationId);
+    if (this.attempts.has(key)) return provider;
+    const routeKey = this.pendingRoute(provider);
+    if (routeKey) this.routing.get(routeKey)!.providerAttempted = true;
+    this.attempts.set(key, { provider, routeKey });
+    this.markUsed(provider, "provider tool call observed");
+    return provider;
+  }
+
+  observeToolResult(toolName: string, fingerprint: string, failed: boolean, reason?: string, correlationId?: string): void {
     const provider = this.providerForTool(toolName);
     if (!provider) return;
-    if (failed) this.failed(provider, fingerprint, reason ?? "provider tool call failed");
-    else this.markUsed(provider, "provider tool result observed");
+    const key = this.attemptKey(provider, fingerprint, correlationId);
+    const attempt = this.attempts.get(key);
+    if (!attempt) return;
+    this.attempts.delete(key);
+    if (!failed) return;
+    if (attempt.routeKey) {
+      const state = this.routing.get(attempt.routeKey);
+      if (!state || state.providerFailed || state.fallbackGranted) return;
+      state.providerFailed = true;
+    }
+    this.markFailure(provider, reason ?? "provider tool call failed");
   }
 
   sync(ledger: PersonaLedger): void {

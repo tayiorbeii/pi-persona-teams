@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { attestationDirectory, createAttestation, writeAttestation, type PersonaAttestation } from "./internal/attestation.ts";
 import { readChildIdentity, personaFileFromIdentity, packageRootFromChildExtension, type ChildIdentity } from "./internal/child-identity.ts";
-import { completeLedger, createLedger, activateMethod, ledgerDeficiencies, missingActivations, recordDisposition, recordPolicyEvent, setProvider, type PersonaEvidence, type PersonaLedger } from "./internal/ledger.ts";
+import { completeLedger, createLedger, activateMethod, ledgerDeficiencies, missingActivations, recordDisposition, recordPolicyEvent, type PersonaEvidence, type PersonaLedger } from "./internal/ledger.ts";
 import { parsePersonaFile, validatePersonaFile, type PersonaFile } from "./internal/persona-file.ts";
 import { evaluateToolCall, type PolicyDecision } from "./internal/role-policy.ts";
 import { ProviderObserver, type ProviderToolDescriptor } from "./internal/provider-observer.ts";
@@ -88,10 +88,7 @@ export class PersonaChildRuntime {
       return { ok: result.ok, message: result.message, ...(result.ok ? { status: this.status() } : {}) };
     }
     if (action.action === "provider") {
-      if (!action.provider || !action.status || !action.availability) return { ok: false, message: "provider, availability, and status are required" };
-      if (action.status === "not_applicable" && (!action.reason || action.reason.trim().length < 12)) return { ok: false, message: "provider non-use requires a specific reason" };
-      setProvider(this.ledger, action.provider, { availability: action.availability, status: action.status, reason: action.reason?.trim() });
-      return { ok: true, message: `provider ${action.provider} recorded`, status: this.status() };
+      return { ok: false, message: "provider state is host-observed and cannot be self-reported", status: this.status() };
     }
     if (action.action === "complete") {
       const result = completeLedger(this.ledger, action.outputSummary ?? "");
@@ -114,28 +111,40 @@ export class PersonaChildRuntime {
     this.providerObserver.sync(this.ledger);
   }
 
-  toolCall(toolName: string, input: Record<string, unknown> = {}): PolicyDecision {
+  toolCall(toolName: string, input: Record<string, unknown> = {}, correlationId?: string): PolicyDecision {
     const fingerprint = toolFingerprint(toolName, input);
-    if (missingActivations(this.ledger).length === 0 && isNativeCodeRead(toolName, input) && this.providerObserver.availability("jcodemunch") === "available") {
+    let fallbackGranted = false;
+    if (missingActivations(this.ledger).length === 0 && isNativeCodeRead(toolName, input) && this.providerObserver.availability("jcodemunch") !== "unavailable") {
       if (this.providerObserver.shouldRedirect("jcodemunch", fingerprint)) {
         const reason = "jCodeMunch is available for this code-orientation operation; use it before broad native exploration";
         recordPolicyEvent(this.ledger, { toolName, inputSummary: fingerprint.slice(0, 160), action: "blocked", reason });
         return { allowed: false, reason, substantive: true };
       }
-      this.providerObserver.allowFallback("jcodemunch", fingerprint);
+      fallbackGranted = this.providerObserver.allowFallback("jcodemunch", fingerprint);
+      if (!fallbackGranted) {
+        const reason = "native code read requires a correlated jCodeMunch failure and its single fallback must remain unused";
+        recordPolicyEvent(this.ledger, { toolName, inputSummary: fingerprint.slice(0, 160), action: "blocked", reason });
+        return { allowed: false, reason, substantive: true };
+      }
     }
-    const decision = evaluateToolCall(this.ledger, { toolName, input }, this.workspace);
+    const observedProvider = this.providerObserver.providerForTool(toolName);
+    const policyToolName = observedProvider === "contextMode" && toolName.trim().toLowerCase() === "context-mode.search"
+      ? "ctx_search"
+      : toolName;
+    const decision = evaluateToolCall(this.ledger, { toolName: policyToolName, input }, this.workspace);
     if (decision.allowed) {
-      const provider = this.providerObserver.providerForTool(toolName);
-      if (provider) this.providerObserver.markUsed(provider, "provider tool call observed");
-      else if (/^(?:read|read_file|grep|find|glob|bash|shell|git_)/i.test(toolName)) this.ledger.providers.native.uses += 1;
+      const provider = this.providerObserver.observeToolCall(toolName, fingerprint, correlationId);
+      if (!provider && /^(?:read|read_file|grep|find|glob|bash|shell|git_)/i.test(toolName)) {
+        this.ledger.providers.native.uses += 1;
+        if (fallbackGranted) this.ledger.providers.native.fallbackUses += 1;
+      }
       this.providerObserver.sync(this.ledger);
     }
     return decision;
   }
 
-  providerResult(toolName: string, input: Record<string, unknown> = {}, failed: boolean, reason?: string): void {
-    this.providerObserver.observeToolResult(toolName, toolFingerprint(toolName, input), failed, reason);
+  providerResult(toolName: string, input: Record<string, unknown> = {}, failed: boolean, reason?: string, correlationId?: string): void {
+    this.providerObserver.observeToolResult(toolName, toolFingerprint(toolName, input), failed, reason, correlationId);
     this.providerObserver.sync(this.ledger);
   }
 
@@ -193,8 +202,10 @@ export default function personaChildExtension(pi: any): void {
   let runtime: PersonaChildRuntime | undefined;
   let startupError: string | undefined;
   try {
-    const allTools = typeof pi.getAllTools === "function" ? pi.getAllTools().map((tool: { name?: string }) => tool.name ?? "") : [];
-    runtime = createPersonaChildRuntimeFromEnvironment({ toolNames: allTools });
+    const allTools: ProviderToolDescriptor[] = typeof pi.getAllTools === "function"
+      ? pi.getAllTools().map((tool: ProviderToolDescriptor) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }))
+      : [];
+    runtime = createPersonaChildRuntimeFromEnvironment({ tools: allTools });
   } catch (error) {
     startupError = error instanceof Error ? error.message : String(error);
   }
@@ -212,20 +223,20 @@ export default function personaChildExtension(pi: any): void {
   pi.on("session_start", async () => {
     if (runtime && typeof pi.getAllTools === "function") {
       const tools = pi.getAllTools().map((tool: { name?: string; description?: string; source?: string; provenance?: string }) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }));
-      runtime.reprobeProviders(tools.map((tool: ProviderToolDescriptor) => tool.name ?? ""), tools);
+      runtime.reprobeProviders([], tools);
     }
   });
-  pi.on("tool_call", async (event: { toolName: string; input?: Record<string, unknown> }) => {
+  pi.on("tool_call", async (event: { toolName: string; input?: Record<string, unknown>; toolCallId?: string }) => {
     if (event.toolName === "persona_contract") return undefined;
     if (startupError || !runtime) return { block: true, reason: `Persona admission failed: ${startupError ?? "unknown startup error"}` };
-    const decision = runtime.toolCall(event.toolName, event.input ?? {});
+    const decision = runtime.toolCall(event.toolName, event.input ?? {}, event.toolCallId);
     return decision.allowed ? undefined : { block: true, reason: decision.reason };
   });
-  pi.on("tool_result", async (event: { toolName?: string; input?: Record<string, unknown>; result?: unknown; isError?: boolean; error?: string }) => {
+  pi.on("tool_result", async (event: { toolName?: string; input?: Record<string, unknown>; result?: unknown; isError?: boolean; error?: string; toolCallId?: string }) => {
     if (!runtime || !event.toolName) return undefined;
     const result = event.result as { isError?: boolean; error?: string } | undefined;
     const failed = event.isError === true || Boolean(event.error) || result?.isError === true;
-    runtime.providerResult(event.toolName, event.input ?? {}, failed, event.error ?? result?.error);
+    runtime.providerResult(event.toolName, event.input ?? {}, failed, event.error ?? result?.error, event.toolCallId);
     return undefined;
   });
   pi.on("session_shutdown", async () => {

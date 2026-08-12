@@ -57,6 +57,8 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
     availableModels: typeof pi.modelRegistry?.getAvailable === "function" ? pi.modelRegistry.getAvailable() : [],
   });
   if (!launch.ok || !launch.contract) throw new Error(launch.message ?? "persona launch preflight failed");
+  const expectedLaunchContractDigest = launch.contract.launchContractDigest ?? launch.contract.digest;
+  if (!expectedLaunchContractDigest) throw new Error("pi-subagents preflight returned a launch contract without launchContractDigest");
   const extensionPaths = [
     ...(launch.contract.tools?.toolExtensionPaths ?? []),
     ...(launch.contract.tools?.runtimeExtensions ?? []),
@@ -118,12 +120,21 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
         reject(new Error("pi-subagents delegation completed without a child run ID"));
         return;
       }
+      if (!response.launchContractDigest) {
+        reject(new Error("pi-subagents delegation completed without launchContractDigest evidence"));
+        return;
+      }
+      if (response.launchContractDigest !== expectedLaunchContractDigest) {
+        reject(new Error("pi-subagents delegation launchContractDigest does not match the immutable preflight contract"));
+        return;
+      }
       const output = response.result?.kind === "text" ? response.result.text : response.result?.value === undefined ? undefined : JSON.stringify(response.result.value);
       resolveResult({
         output,
         runId: response.runId,
-        ordinaryAccepted: true,
-        launchContractDigest: response.launchContractDigest ?? launch.contract?.launchContractDigest ?? launch.contract?.digest,
+        ordinaryAccepted: false,
+        ordinaryAcceptanceReason: "terminal completion is not ordinary acceptance evidence",
+        launchContractDigest: response.launchContractDigest,
       });
     });
     timer = setTimeout(() => {

@@ -89,20 +89,41 @@ export function listPersonas(packageRoot: string): PersonaSummary[] {
   });
 }
 
+const CANONICAL_RUNTIME_NAMES = [
+  "persona-team.founder-ceo",
+  "persona-team.product-designer",
+  "persona-team.devex-lead",
+  "persona-team.engineering-manager",
+  "persona-team.implementation-engineer",
+  "persona-team.staff-reviewer",
+  "persona-team.security-officer",
+  "persona-team.qa-lead",
+  "persona-team.release-engineer",
+  "persona-team.retro-ops-manager",
+] as const;
+
 export async function discoverThroughPiSubagents(cwd: string): Promise<PersonaDiscovery[]> {
+  const moduleName: string = "pi-subagents/preflight";
+  let runtime: { resolveSubagentLaunchContract?: (input: Record<string, unknown>) => Promise<any> };
   try {
-    const moduleName: string = "pi-subagents/preflight";
-    const runtime = await import(moduleName) as {
-      resolveSubagentLaunchContract?: (input: Record<string, unknown>) => Promise<any>;
-    };
-    if (!runtime.resolveSubagentLaunchContract) return [];
-    const result = await runtime.resolveSubagentLaunchContract({ agent: "persona-team.engineering-manager", task: "persona discovery preflight", context: "fresh", cwd, availableModels: [] });
-    if (!result.ok || !result.contract?.agent) return [];
-    const selected = result.contract.agent;
-    return [selected, ...(selected.shadowedCandidates ?? [])].map((agent: { name: string; source: string; filePath: string; packageName?: string }) => ({ runtimeName: agent.name, source: agent.source, filePath: agent.filePath, packageName: agent.packageName }));
-  } catch {
-    return [];
+    runtime = await import(moduleName);
+  } catch (error) {
+    throw new Error(`pi-subagents preflight subpath is unavailable: ${error instanceof Error ? error.message : String(error)}`);
   }
+  if (typeof runtime.resolveSubagentLaunchContract !== "function") {
+    throw new Error("pi-subagents preflight capability resolveSubagentLaunchContract is unavailable");
+  }
+
+  const discoveries: PersonaDiscovery[] = [];
+  for (const runtimeName of CANONICAL_RUNTIME_NAMES) {
+    const result = await runtime.resolveSubagentLaunchContract({ agent: runtimeName, task: "persona discovery preflight", context: "fresh", cwd, availableModels: [] });
+    if (!result.ok || !result.contract?.agent) {
+      throw new Error(`pi-subagents preflight could not resolve ${runtimeName}: ${result.message ?? "no launch contract returned"}`);
+    }
+    const selected = result.contract.agent;
+    discoveries.push(...[selected, ...(selected.shadowedCandidates ?? [])].map((agent: { name: string; source: string; filePath: string; packageName?: string }) => ({ runtimeName: agent.name, source: agent.source, filePath: agent.filePath, packageName: agent.packageName })));
+  }
+  return discoveries;
 }
 
 export async function personaDoctor(options: PersonaFacadeOptions): Promise<{
@@ -117,16 +138,24 @@ export async function personaDoctor(options: PersonaFacadeOptions): Promise<{
 }> {
   const workspace = options.workspace ?? process.cwd();
   const personas = listPersonas(options.packageRoot);
-  const discoveries = options.discover ? await options.discover(workspace) : await discoverThroughPiSubagents(workspace);
   const deficiencies: string[] = [];
   const degraded: string[] = [];
+  let discoveries: PersonaDiscovery[] = [];
+  try {
+    discoveries = options.discover ? await options.discover(workspace) : await discoverThroughPiSubagents(workspace);
+  } catch (error) {
+    deficiencies.push(`pi-subagents integration is unavailable: ${error instanceof Error ? error.message : String(error)}`);
+  }
   if (personas.length !== 10) deficiencies.push(`expected ten canonical persona files, found ${personas.length}`);
   for (const persona of personas) if (!persona.valid) deficiencies.push(`${persona.runtimeName} is invalid`);
   const packageNames = new Set(discoveries.filter((item) => item.source === "package" || item.packageName === "persona-team").map((item) => item.runtimeName));
-  if (discoveries.length === 0 && !options.discover) deficiencies.push("pi-subagents discovery API is unavailable");
-  if (discoveries.length > 0 && !packageNames.has("persona-team.engineering-manager")) deficiencies.push("Engineering Manager is not discoverable through pi-subagents");
-  const collisions = discoveries.filter((item) => item.runtimeName === "persona-team.engineering-manager" && item.source !== "package");
-  if (collisions.length) deficiencies.push("Engineering Manager has a non-package shadow or collision");
+  if (discoveries.length === 0 && deficiencies.every((item) => !item.startsWith("pi-subagents integration is unavailable"))) deficiencies.push("pi-subagents discovery returned no canonical personas");
+  for (const runtimeName of CANONICAL_RUNTIME_NAMES) {
+    if (!packageNames.has(runtimeName)) deficiencies.push(`${runtimeName} is not discoverable through pi-subagents`);
+    if (discoveries.some((item) => item.runtimeName === runtimeName && item.source !== "package" && item.packageName !== "persona-team")) {
+      deficiencies.push(`${runtimeName} has a non-package shadow or collision`);
+    }
+  }
   const childPath = join(options.packageRoot, "extensions", "persona-child.ts");
   if (!existsSync(childPath)) deficiencies.push("child enforcement extension is missing");
   const providers = providerDoctor(options.toolNames ?? [], options.environment, options.toolDescriptors);
@@ -193,10 +222,13 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
     return { accepted: false, runtimeName, output: delegated.output, errors: [`host-authored persona attestation could not be read: ${error instanceof Error ? error.message : String(error)}`], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
   }
   if (!attestation) return { accepted: false, runtimeName, output: delegated.output, errors: ["host-authored persona attestation is missing"], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
-  const boundAttestation = delegated.launchContractDigest && !attestation.launchContractDigest
-    ? { ...attestation, launchContractDigest: delegated.launchContractDigest }
-    : attestation;
-  const verification = verifyAttestation(boundAttestation, {
+  if (!delegated.launchContractDigest) {
+    return { accepted: false, runtimeName, output: delegated.output, attestation, errors: ["pi-subagents delegation response is missing the expected launchContractDigest binding"], ordinaryAccepted: false, personaAccepted: false, delegated: true };
+  }
+  if (!attestation.launchContractDigest) {
+    return { accepted: false, runtimeName, output: delegated.output, attestation, errors: ["host-authored persona attestation is missing launchContractDigest"], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
+  }
+  const verification = verifyAttestation(attestation, {
     runtimeName,
     role: selected.persona.contract.role,
     runId: delegated.runId,
@@ -210,7 +242,7 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   const ordinaryAccepted = delegated.ordinaryAccepted === true;
   const errors = [...verification.errors];
   if (!ordinaryAccepted) errors.push(delegated.ordinaryAcceptanceReason ?? "ordinary pi-subagents acceptance did not pass");
-  return { accepted: verification.valid && ordinaryAccepted, runtimeName, output: delegated.output, attestation: boundAttestation, errors, ordinaryAccepted, personaAccepted: verification.valid, delegated: true };
+  return { accepted: verification.valid && ordinaryAccepted, runtimeName, output: delegated.output, attestation, errors, ordinaryAccepted, personaAccepted: verification.valid, delegated: true };
 }
 
 export function packagePreflight(packageRoot: string, runtimeName: string): { valid: boolean; persona?: PersonaFile; errors: string[]; childExtension: string } {
