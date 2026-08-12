@@ -1,3 +1,8 @@
+---
+name: persona-team
+description: Use canonical persona-team agents through pi-subagents for bounded role work with independent review and attestation requirements.
+---
+
 # Persona Team
 
 Use the canonical `persona-team.<slug>` agent through `pi-subagents` for bounded role work. The package's `persona_team` tool can list or diagnose package readiness. For a persona task:
