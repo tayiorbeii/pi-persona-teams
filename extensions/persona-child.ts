@@ -202,10 +202,10 @@ export default function personaChildExtension(pi: any): void {
   let runtime: PersonaChildRuntime | undefined;
   let startupError: string | undefined;
   try {
-    const allTools: ProviderToolDescriptor[] = typeof pi.getAllTools === "function"
-      ? pi.getAllTools().map((tool: ProviderToolDescriptor) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }))
-      : [];
-    runtime = createPersonaChildRuntimeFromEnvironment({ tools: allTools });
+    // Do not call pi.getAllTools() during extension loading: Pi exposes throwing
+    // action-method stubs until ExtensionRunner.bindCore() runs. Tool discovery is
+    // deferred to the session_start handler below, which fires after binding.
+    runtime = createPersonaChildRuntimeFromEnvironment({ tools: [] });
   } catch (error) {
     startupError = error instanceof Error ? error.message : String(error);
   }
@@ -221,9 +221,21 @@ export default function personaChildExtension(pi: any): void {
     },
   });
   pi.on("session_start", async () => {
-    if (runtime && typeof pi.getAllTools === "function") {
-      const tools = pi.getAllTools().map((tool: { name?: string; description?: string; source?: string; provenance?: string }) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }));
+    const tools: ProviderToolDescriptor[] = typeof pi.getAllTools === "function"
+      ? pi.getAllTools().map((tool: ProviderToolDescriptor) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }))
+      : [];
+    if (runtime) {
       runtime.reprobeProviders([], tools);
+      return;
+    }
+    // Retry runtime construction now that the runtime is bound. A load-time failure
+    // may have been environmental (e.g., an unset child-identity variable) rather
+    // than a genuine persona admission error.
+    try {
+      runtime = createPersonaChildRuntimeFromEnvironment({ tools });
+      startupError = undefined;
+    } catch (error) {
+      startupError = error instanceof Error ? error.message : String(error);
     }
   });
   pi.on("tool_call", async (event: { toolName: string; input?: Record<string, unknown>; toolCallId?: string }) => {

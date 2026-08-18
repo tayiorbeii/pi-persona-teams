@@ -10,5 +10,6 @@ build/
 !.env.example
 .tmp-attestations/
 .pi-persona/
+.pi-subagents/
 .pi/
 .DS_Store
