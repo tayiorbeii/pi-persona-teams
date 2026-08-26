@@ -14,7 +14,9 @@ function runtime() {
   if (!result.persona) throw new Error(result.errors.join("; "));
   const identity = { runtimeName: "persona-team.engineering-manager", runId: `ledger-policy-${++runSequence}`, childIndex: 0 };
   rmSync(ledgerPersistencePath(identity), { force: true });
-  return new PersonaChildRuntime({ identity, personaPath, workspace: root, attestationDir: join(root, ".tmp-attestations") });
+  const child = new PersonaChildRuntime({ identity, personaPath, workspace: root, attestationDir: join(root, ".tmp-attestations") });
+  expect(child.handle({ action: "status" }).ok).toBe(true);
+  return child;
 }
 
 const plans: Record<string, string> = {

@@ -6,7 +6,9 @@ const root = join(import.meta.dir, "..");
 const writerMethods = ["persona-team-clean-code", "persona-team-refactoring-patterns", "persona-team-software-design-philosophy", "persona-team-pragmatic-programmer"];
 const reviewerMethods = ["persona-team-clean-code", "persona-team-clean-architecture", "persona-team-refactoring-patterns", "persona-team-software-design-philosophy"];
 function child(role: string) {
-  return new PersonaChildRuntime({ identity: { runtimeName: `persona-team.${role}`, runId: `${role}-run`, childIndex: 0 }, personaPath: join(root, "agents", `${role}.md`), workspace: root, attestationDir: join(root, ".tmp-attestations") });
+  const runtime = new PersonaChildRuntime({ identity: { runtimeName: `persona-team.${role}`, runId: `${role}-run`, childIndex: 0 }, personaPath: join(root, "agents", `${role}.md`), workspace: root, attestationDir: join(root, ".tmp-attestations") });
+  expect(runtime.handle({ action: "status" }).ok).toBe(true);
+  return runtime;
 }
 
 test("Implementation Engineer writes only in scope and cannot release", () => {

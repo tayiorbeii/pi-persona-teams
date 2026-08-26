@@ -14,6 +14,7 @@ test("Engineering Manager tracer produces a plan artifact without source edits",
   writeFileSync(join(workspace, "src", "index.ts"), "export const fixture = true;\n");
   const personaPath = join(root, "agents", "engineering-manager.md");
   const child = new PersonaChildRuntime({ identity: { runtimeName: "persona-team.engineering-manager", runId: "e2e-plan", childIndex: 0 }, personaPath, workspace, attestationDir: join(workspace, ".attestations") });
+  expect(child.handle({ action: "status" }).ok).toBe(true);
   const methods = validatePersonaFile(personaPath).persona?.contract.requiredMethods ?? [];
   for (const method of methods) expect(child.handle({ action: "activate", method, plannedApplication: `Apply ${method} to the fixture repository plan.` }).ok).toBe(true);
   expect(child.toolCall("read", { path: "src/index.ts" }).allowed).toBe(true);

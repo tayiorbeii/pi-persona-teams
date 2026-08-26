@@ -207,7 +207,7 @@ export function parsePersonaFile(source: string, filePath = "<memory>"): Persona
   }
   if (frontmatter.package && frontmatter.package !== "persona-team") errors.push("frontmatter package must be persona-team");
   if (frontmatter.systemPromptMode && frontmatter.systemPromptMode !== "replace") errors.push("persona systemPromptMode must be replace");
-  if (frontmatter.inheritSkills && frontmatter.inheritSkills !== "false") errors.push("persona inheritSkills must be false");
+  if (frontmatter.inheritSkills && frontmatter.inheritSkills !== "true") errors.push("persona inheritSkills must be true");
   const contract = parseContract(source, errors);
   const methods = parseMethods(source, errors);
   if (contract) {

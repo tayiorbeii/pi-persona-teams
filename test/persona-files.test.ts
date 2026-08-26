@@ -32,6 +32,42 @@ describe("independent persona files", () => {
     }
   });
 
+  test("every persona inherits normal Pi tools, extensions, skills, and project settings", () => {
+    for (const role of Object.keys(expectedMethods)) {
+      const source = readFileSync(join(root, "agents", `${role}.md`), "utf8");
+      expect(source, role).not.toMatch(/^tools:/m);
+      expect(source, role).not.toMatch(/^extensions:/m);
+      expect(source, role).toContain("inheritProjectContext: true");
+      expect(source, role).toContain("inheritSkills: true");
+      expect(source, role).toContain("subagentOnlyExtensions: ../extensions/persona-child.ts");
+      expect(source, role).toContain("timeoutMs: 600000");
+      expect(source, role).toContain('turnBudget: {"maxTurns":8,"graceTurns":1}');
+      expect(source, role).toContain('toolBudget: {"soft":12,"hard":18,"block":["*"]}');
+      expect(source, role).toContain("## Runtime Resource Gate");
+      expect(source, role).toContain("persona_contract.status");
+      expect(source, role).toContain("octocode-research");
+      expect(source, role).toContain("npx -y octocode@18.3.0");
+      expect(source, role).toContain("cannot override this exact-version policy");
+      expect(source, role).not.toContain("octocode@latest");
+      expect(source, role).toContain("ponytail");
+      expect(source, role).toContain("i-have-adhd");
+    }
+  });
+
+  test("persona-team dispatch guidance requires schemas, small fan-out, and bounded finalization", () => {
+    const source = readFileSync(join(root, "skills", "persona-team", "SKILL.md"), "utf8");
+    expect(source).toContain("outputSchema");
+    expect(source).toContain("toolVisibility");
+    expect(source).toContain("At most two concurrent personas");
+    expect(source).toContain("Partial or timed-out child transcripts are not evidence");
+    expect(source).toContain("octocode-research");
+    expect(source).toContain("npx -y octocode@18.3.0");
+    expect(source).toContain("cannot override this exact-version policy");
+    expect(source).not.toContain("octocode@latest");
+    expect(source).toContain("ponytail");
+    expect(source).toContain("i-have-adhd");
+  });
+
   test("every canonical persona validates from an isolated copy", () => {
     for (const role of Object.keys(expectedMethods)) {
       const directory = mkdtempSync(join(tmpdir(), `persona-independent-${role}-`));

@@ -20,12 +20,19 @@ const READ_ONLY_COMMANDS = /^(?:pwd|ls(?:\s|$)|rg(?:\s|$)|grep(?:\s|$)|git\s+(?:
 const MUTATING_COMMAND = /(?:^|\s)(?:rm|mv|cp|mkdir|touch|install|add|commit|checkout|switch|reset|restore|push|pull|merge|rebase|deploy|publish|chmod|tee)(?:\s|$)|(?:^|\s)(?:--output(?:=|\s)|-o\s)/i;
 const SHELL_CONTROL_SYNTAX = /[\r\n;&|`<>^]|\$\(|\$\{/;
 const SHELL_INTERPRETER = /(?:^|\s)(?:sh|bash|zsh|dash|fish|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh|python(?:\d+(?:\.\d+)*)?|py|node)(?:\s|$)/i;
-const JCODEMUNCH_READ_OPERATION = "(?:plan_turn|search_symbols|get_symbol_source|get_file_outline|find_references|find_importers|get_blast_radius|get_changed_symbols|get_context_bundle|get_ranked_context|assemble_task_context)";
+const CONTEXT_MODE_READ_OPERATION = "(?:search|index|fetch_and_index)";
+const JCODEMUNCH_READ_OPERATION = "(?:resolve_repo|plan_turn|search_symbols|search_text|get_symbol_source|get_file_outline|find_references|find_importers|get_blast_radius|get_changed_symbols|get_context_bundle|get_ranked_context|assemble_task_context|index_file|index_repo)";
 const APPROVED_PROVIDER_READ_TOOL = new RegExp(
-  `^(?:ctx_(?:search|index|fetch_and_index)|jcodemunch_${JCODEMUNCH_READ_OPERATION}|mcp__(?:context[-_]?mode)__(?:ctx_)?(?:search|index|fetch_and_index)|mcp__jcodemunch__(?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|mcp:(?:context[-_]?mode):(?:ctx_)?(?:search|index|fetch_and_index)|mcp:jcodemunch:(?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION})$`,
+  `^(?:ctx_${CONTEXT_MODE_READ_OPERATION}|context[-_]?mode_(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|jcodemunch_${JCODEMUNCH_READ_OPERATION}|mcp__(?:context[-_]?mode)__(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp__jcodemunch__(?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|mcp:(?:context[-_]?mode)[:/](?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp:jcodemunch[:/](?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION})$`,
   "i",
 );
-const READ_TOOL = /^(?:read|read_file|grep|find|glob|search|search_code|web_search|web_fetch|list|ls|git_diff|git_status)$/i;
+const OCTOCODE_READ_COMMAND = /^npx\s+-y\s+octocode@18\.3\.0\s+(?:--help|status(?:\s+--json)?|auth\s+status|tools\s+(?:ghSearchCode|ghGetFileContent|ghViewRepoStructure|ghSearchRepos|ghSearchPullRequests|ghSearchIssues|ghSearchCommits|npmSearch)(?:\s+--scheme|\s+--queries\s+.+?(?:\s+--(?:json|compact))?)?)\s*$/i;
+const RUST_VALIDATION_COMMAND = /^(?:cargo\s+(?:\+\S+\s+)?--version|rustc\s+--version|cargo\s+(?:\+\S+\s+)?(?:test|check|clippy|build|metadata|tree)(?:\s+.*)?|cargo\s+(?:\+\S+\s+)?fmt(?=[^\r\n]*--check(?:\s|$))(?:\s+.*)?)$/i;
+const CARGO_COMMAND = /^cargo(?:\s|$)/i;
+const CARGO_RELEASE_OPERATION = /(?:^|\s)(?:publish|yank|owner|login|logout)(?:\s|$)/i;
+const CARGO_SOURCE_MUTATION = /(?:^|\s)(?:add|fix|fmt|generate-lockfile|init|new|remove|set-version|update|upgrade|vendor)(?:\s|$)/i;
+const READ_TOOL = /^(?:read|read_file|grep|find|ffgrep|fffind|glob|search|search_code|web_search|web_fetch|list|ls|git_diff|git_status)$/i;
+const FINALIZATION_TOOL = /^structured_output$/i;
 const WRITE_TOOL = /^(?:write|write_file|edit|edit_file|apply_patch|patch|delete|remove|mkdir|move|copy)$/i;
 
 const WRITE_PATH_KEYS = new Set(["path", "filepath", "filename", "target", "destination", "dest", "newpath", "to", "outputpath"]);
@@ -94,9 +101,20 @@ function isPlanningArtifact(workspace: string, candidate: string): boolean {
 
 function commandAllowedForReadOnly(command: string): boolean {
   const trimmed = command.trim();
-  if (!trimmed || SHELL_CONTROL_SYNTAX.test(trimmed) || MUTATING_COMMAND.test(trimmed)) return false;
+  if (!trimmed || SHELL_CONTROL_SYNTAX.test(trimmed)) return false;
+  if (OCTOCODE_READ_COMMAND.test(trimmed)) return true;
+  if (RUST_VALIDATION_COMMAND.test(trimmed)) return true;
+  if (CARGO_COMMAND.test(trimmed)) return !CARGO_RELEASE_OPERATION.test(trimmed) && !CARGO_SOURCE_MUTATION.test(trimmed);
+  if (MUTATING_COMMAND.test(trimmed)) return false;
   if (SHELL_INTERPRETER.test(trimmed) && !/^node\s+--version(?:\s|$)/i.test(trimmed)) return false;
   return READ_ONLY_COMMANDS.test(trimmed);
+}
+
+function commandAllowedForImplementation(command: string): boolean {
+  const trimmed = command.trim();
+  if (!trimmed || SHELL_CONTROL_SYNTAX.test(trimmed)) return false;
+  if (CARGO_COMMAND.test(trimmed)) return !CARGO_RELEASE_OPERATION.test(trimmed);
+  return commandAllowedForReadOnly(trimmed);
 }
 
 export function isSubstantiveCall(tool: ToolCall): boolean {
@@ -121,6 +139,10 @@ export function evaluateToolCall(
   const input = tool.input ?? {};
   if (tool.toolName === "persona_contract" || tool.toolName.startsWith("persona_contract.")) return { allowed: true, reason: "persona protocol tool", substantive: false };
   if (APPROVED_PROVIDER_READ_TOOL.test(tool.toolName)) return { allowed: true, reason: "approved read-only provider operation", substantive };
+  if (FINALIZATION_TOOL.test(tool.toolName)) {
+    recordPolicyEvent(ledger, { toolName: tool.toolName, action: "allowed", reason: "structured finalization after mandatory method activation" });
+    return { allowed: true, reason: "structured finalization after mandatory method activation", substantive };
+  }
   if (tool.toolName === "subagent" || tool.toolName === "persona_team") {
     const reason = "persona children cannot fan out or replace the parent lifecycle authority";
     recordPolicyEvent(ledger, { toolName: tool.toolName, action: "blocked", reason });
@@ -157,7 +179,7 @@ export function evaluateToolCall(
   if (tool.toolName === "bash" || tool.toolName === "shell") {
     const command = typeof input.command === "string" ? input.command : "";
     if (authority === "implementation-writer") {
-      if (!commandAllowedForReadOnly(command)) {
+      if (!commandAllowedForImplementation(command)) {
         const reason = "implementation shell access is limited to approved validation and read-only commands";
         recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: command.slice(0, 160), action: "blocked", reason });
         return { allowed: false, reason, substantive };

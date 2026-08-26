@@ -58,14 +58,6 @@ describe("deterministic provider permutations", () => {
         attestationDir: join(workspace, "attestations"),
         toolNames: ["ctx_search", "jcodemunch_search_symbols"],
       });
-      for (const method of [
-        "persona-team-domain-driven-design",
-        "persona-team-system-design",
-        "persona-team-ddia-systems",
-        "persona-team-clean-architecture",
-      ]) {
-        expect(child.handle({ action: "activate", method, plannedApplication: `Apply ${method} to the provider status task.` }).ok).toBe(true);
-      }
       const initial = child.handle({ action: "status" });
       expect(initial.status?.providers.contextMode).toMatchObject({ availability: "available", status: "not_applicable", uses: 0 });
       expect(initial.status?.providers.jcodemunch).toMatchObject({ availability: "available", status: "not_applicable", uses: 0 });

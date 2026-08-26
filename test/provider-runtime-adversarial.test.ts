@@ -58,6 +58,16 @@ describe("host-observed provider routing", () => {
     expect(trustedDescriptors.contextMode.availability).toBe("available");
     expect(trustedDescriptors.jcodemunch.availability).toBe("available");
 
+    const directMcpDescriptors = detectProviders({
+      tools: [
+        { name: "context_mode_ctx_search", source: "context-mode" },
+        { name: "mcp__jcodemunch__search_symbols", provenance: "jcodemunch" },
+      ],
+      environment: {},
+    });
+    expect(directMcpDescriptors.contextMode.availability).toBe("available");
+    expect(directMcpDescriptors.jcodemunch.availability).toBe("available");
+
     const observed = detectProviders({ toolNames: ["jcodemunch_get_symbol_source", "ctx_search"], environment: {} });
     expect(observed.jcodemunch.availability).toBe("available");
     expect(observed.contextMode.availability).toBe("available");

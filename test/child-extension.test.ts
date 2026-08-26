@@ -1,13 +1,15 @@
 import { expect, test } from "bun:test";
+import { rmSync } from "node:fs";
 import personaChildExtension from "../extensions/persona-child.ts";
+import { ledgerPersistencePath } from "../extensions/internal/ledger.ts";
 
 interface RegisteredTool {
   name: string;
-  execute: (toolCallId: string, params: unknown) => Promise<{ details?: { ok?: boolean; message?: string } }> | { details?: { ok?: boolean; message?: string } };
+  execute: (toolCallId: string, params: unknown) => Promise<{ details?: { ok?: boolean; message?: string; status?: { toolVisibility?: { available: string[] }; providers?: { contextMode?: { availability: string }; jcodemunch?: { availability: string } } } } }> | { details?: { ok?: boolean; message?: string; status?: { toolVisibility?: { available: string[] }; providers?: { contextMode?: { availability: string }; jcodemunch?: { availability: string } } } } };
 }
 
 interface FakePi {
-  getAllTools: () => Array<{ name: string; description: string; source: string; provenance: string }>;
+  getAllTools: () => Array<{ name: string; description: string; source?: string; provenance?: string }>;
   registerTool: (tool: RegisteredTool) => void;
   on: (event: string, handler: (payload: unknown) => unknown) => void;
 }
@@ -30,9 +32,13 @@ function buildFakePi(): {
         // Reproduce the Pi pre-bind stub that previously poisoned admission.
         throw new Error("Extension runtime not initialized. Action methods cannot be called during extension loading.");
       }
+      // Match pi-mcp-adapter direct tools: registry names are present, but
+      // registerTool descriptors do not carry source/provenance metadata.
       return [
-        { name: "ctx_search", description: "search", source: "context-mode", provenance: "mcp:context-mode" },
-        { name: "jcodemunch_search_symbols", description: "search", source: "jcodemunch", provenance: "mcp:jcodemunch" },
+        { name: "context_mode_ctx_search", description: "search" },
+        { name: "jcodemunch_search_symbols", description: "search" },
+        { name: "fffind", description: "fuzzy path search" },
+        { name: "ffgrep", description: "indexed content search" },
       ];
     },
     registerTool(tool: RegisteredTool) {
@@ -54,6 +60,8 @@ test("child extension defers tool discovery until session_start instead of calli
   process.env.PI_SUBAGENT_CHILD_AGENT = "persona-team.engineering-manager";
   process.env.PI_SUBAGENT_RUN_ID = "child-extension-test";
   process.env.PI_SUBAGENT_CHILD_INDEX = "0";
+  const identity = { runtimeName: "persona-team.engineering-manager", runId: "child-extension-test", childIndex: 0 };
+  rmSync(ledgerPersistencePath(identity), { force: true });
   try {
     const { pi, getAllToolsCalls, setBound, registeredTools, handlers } = buildFakePi();
 
@@ -73,8 +81,18 @@ test("child extension defers tool discovery until session_start instead of calli
     // The admission tool is no longer pinned to a spurious startup error.
     const contract = registeredTools.find((tool) => tool.name === "persona_contract")!;
     const result = await contract.execute("call-1", { action: "status" });
-    expect(result.details?.ok).toBe(true);
+    expect(result.details?.ok, result.details?.message).toBe(true);
+    expect(result.details?.status?.toolVisibility?.available).toEqual(expect.arrayContaining([
+      "context_mode_ctx_search",
+      "jcodemunch_search_symbols",
+      "fffind",
+      "ffgrep",
+    ]));
+    expect(result.details?.status?.toolVisibility?.available).toHaveLength(4);
+    expect(result.details?.status?.providers?.contextMode?.availability).toBe("available");
+    expect(result.details?.status?.providers?.jcodemunch?.availability).toBe("available");
   } finally {
+    rmSync(ledgerPersistencePath(identity), { force: true });
     if (original.childAgent === undefined) delete process.env.PI_SUBAGENT_CHILD_AGENT;
     else process.env.PI_SUBAGENT_CHILD_AGENT = original.childAgent;
     if (original.runId === undefined) delete process.env.PI_SUBAGENT_RUN_ID;

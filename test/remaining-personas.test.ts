@@ -12,6 +12,7 @@ for (const role of roles) {
     const validation = validatePersonaFile(personaPath);
     if (!validation.persona) throw new Error(validation.errors.join("; "));
     const child = new PersonaChildRuntime({ identity: { runtimeName: `persona-team.${role}`, runId: `${role}-representative`, childIndex: 0 }, personaPath, workspace: root, attestationDir: join(root, ".tmp-attestations") });
+    expect(child.handle({ action: "status" }).ok).toBe(true);
     for (const method of validation.persona.contract.requiredMethods) expect(child.handle({ action: "activate", method, plannedApplication: `Apply ${method} to the bounded ${role} representative task.` }).ok).toBe(true);
     expect(child.toolCall("read", { path: "README.md" }).allowed).toBe(true);
     expect(child.toolCall("write", { path: "src/product.ts" }).allowed).toBe(false);

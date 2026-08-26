@@ -12,6 +12,7 @@ export interface PersonaContractStatus {
   authority: string;
   requiredMethods: Array<{ id: string; bodySha256: string; activated: boolean; disposition?: string }>;
   providers: PersonaLedger["providers"];
+  toolVisibility: { available: string[] };
   deficiencies: string[];
   repairTurns: number;
   completionStatus: PersonaLedger["completionStatus"];
@@ -48,6 +49,8 @@ export class PersonaChildRuntime {
   readonly providerObserver: ProviderObserver;
   private latestAttestation?: PersonaAttestation;
   private latestAttestationPath?: string;
+  private availableTools: string[];
+  private visibilityReported = false;
   private readonly workspace: string;
   private readonly attestationDir: string;
 
@@ -60,6 +63,10 @@ export class PersonaChildRuntime {
     this.ledger = createLedger(this.persona, options.identity);
     this.providerObserver = new ProviderObserver({ toolNames: options.toolNames ?? [], tools: options.tools ?? [] });
     this.providerObserver.sync(this.ledger);
+    this.availableTools = [...new Set([
+      ...(options.toolNames ?? []),
+      ...(options.tools ?? []).flatMap((tool) => tool.name ? [tool.name] : []),
+    ])].sort();
     this.workspace = options.workspace ?? process.cwd();
     this.attestationDir = attestationDirectory(this.workspace, options.attestationDir);
   }
@@ -70,11 +77,15 @@ export class PersonaChildRuntime {
       return { id, bodySha256: entry.bodySha256, activated: Boolean(entry.activatedAt), disposition: entry.disposition };
     });
     const deficiencies = ledgerDeficiencies(this.ledger);
-    return { role: this.persona.contract.role, runtimeName: this.persona.contract.runtimeName, authority: this.persona.contract.authority, requiredMethods, providers: this.ledger.providers, deficiencies, repairTurns: this.ledger.repairTurns, completionStatus: this.ledger.completionStatus };
+    return { role: this.persona.contract.role, runtimeName: this.persona.contract.runtimeName, authority: this.persona.contract.authority, requiredMethods, providers: this.ledger.providers, toolVisibility: { available: this.availableTools }, deficiencies, repairTurns: this.ledger.repairTurns, completionStatus: this.ledger.completionStatus };
   }
 
   handle(action: PersonaChildAction): PersonaChildResult {
-    if (action.action === "status") return { ok: true, message: "persona status", status: this.status() };
+    if (action.action === "status") {
+      this.visibilityReported = true;
+      return { ok: true, message: "persona status and actual child tool visibility", status: this.status() };
+    }
+    if (!this.visibilityReported) return { ok: false, message: "call persona_contract.status first and report its actual child tool visibility", status: this.status() };
     if (action.action === "activate") {
       if (this.ledger.completionStatus === "failed") return { ok: false, message: "persona completion is terminally failed" };
       if (!action.method) return { ok: false, message: "method is required" };
@@ -109,9 +120,18 @@ export class PersonaChildRuntime {
   reprobeProviders(toolNames: string[], tools: ProviderToolDescriptor[] = []): void {
     this.providerObserver.reprobe({ toolNames, tools });
     this.providerObserver.sync(this.ledger);
+    this.availableTools = [...new Set([
+      ...toolNames,
+      ...tools.flatMap((tool) => tool.name ? [tool.name] : []),
+    ])].sort();
   }
 
   toolCall(toolName: string, input: Record<string, unknown> = {}, correlationId?: string): PolicyDecision {
+    if (!this.visibilityReported) {
+      const reason = "call persona_contract.status first and report its actual child tool visibility";
+      recordPolicyEvent(this.ledger, { toolName, inputSummary: toolFingerprint(toolName, input).slice(0, 160), action: "blocked", reason });
+      return { allowed: false, reason, substantive: true };
+    }
     const fingerprint = toolFingerprint(toolName, input);
     let fallbackGranted = false;
     if (missingActivations(this.ledger).length === 0 && isNativeCodeRead(toolName, input) && this.providerObserver.availability("jcodemunch") !== "unavailable") {
@@ -224,15 +244,16 @@ export default function personaChildExtension(pi: any): void {
     const tools: ProviderToolDescriptor[] = typeof pi.getAllTools === "function"
       ? pi.getAllTools().map((tool: ProviderToolDescriptor) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }))
       : [];
+    const toolNames = tools.flatMap((tool) => tool.name ? [tool.name] : []);
     if (runtime) {
-      runtime.reprobeProviders([], tools);
+      runtime.reprobeProviders(toolNames, tools);
       return;
     }
     // Retry runtime construction now that the runtime is bound. A load-time failure
     // may have been environmental (e.g., an unset child-identity variable) rather
     // than a genuine persona admission error.
     try {
-      runtime = createPersonaChildRuntimeFromEnvironment({ tools });
+      runtime = createPersonaChildRuntimeFromEnvironment({ toolNames, tools });
       startupError = undefined;
     } catch (error) {
       startupError = error instanceof Error ? error.message : String(error);

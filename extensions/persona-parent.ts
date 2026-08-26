@@ -11,6 +11,8 @@ import {
 
 let requestSequence = 0;
 
+export const PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS = 600_000;
+
 function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..");
 }
@@ -142,7 +144,7 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
       settled = true;
       if (typeof unsubscribe === "function") unsubscribe();
       reject(new Error("timed out waiting for pi-subagents delegation response"));
-    }, 120_000);
+    }, PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS);
     try {
       pi.events.emit(delegation.SUBAGENT_DELEGATION_REQUEST_EVENT, delegationRequest);
     } catch (error) {

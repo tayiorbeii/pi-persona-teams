@@ -1,9 +1,14 @@
-# Upstream fix guide: pi-subagents relative child-extension paths
+# Merged upstream fix: pi-subagents relative child-extension paths
 
-This document captures everything needed to fork the official `nicobailon/pi-subagents`
-repository, apply the fix, and open a pull request describing the issue and the fix.
+**Status:** merged into official `nicobailon/pi-subagents` `main` by PR
+[#1251](https://github.com/nicobailon/pi-subagents/pull/1251) on 2026-08-18,
+with credit to the original contribution in #1249. The release-bearing commit is
+`aaa303f6367047c1c521d31f635619b8a798801c`.
 
-The same fix is already recorded as a machine-applicable patch in
+The npm `0.51.0` artifact predates the merge. Use official `main` until the next npm
+release includes that commit. The remaining fork and patch instructions are retained
+only as historical implementation evidence; users should not apply the local patch.
+The original machine-applicable patch remains at
 [`docs/pi-subagents-relative-extension-paths.patch`](./pi-subagents-relative-extension-paths.patch).
 
 ---
@@ -253,8 +258,6 @@ Updated the affected unit tests to assert the resolved absolute paths and verifi
 
 ## 8. Notes
 
-- The patch targets `nicobailon/pi-subagents` at `main` (version `0.51.0` at the time of
-  capture). If the file has drifted, apply the equivalent two-line change plus helper
-  described in section 3.1 and re-check the surrounding test assertions.
-- The installed `node_modules` copy was patched manually for local verification; that
-  patch is **not durable** across reinstall. The PR (this document) is the durable fix.
+- The historical patch targeted `nicobailon/pi-subagents` at `main` version `0.51.0`.
+- Official PR #1251 supersedes the local patch. Do not patch `node_modules`; install a
+  release containing `aaa303f6367047c1c521d31f635619b8a798801c` or official `main`.

@@ -38,9 +38,13 @@ const PROVIDER_TOOL_NAMES: Record<ProviderName, ReadonlySet<string>> = {
     "context-mode.search",
   ]),
   jcodemunch: new Set([
+    "jcodemunch_resolve_repo",
     "jcodemunch_get_file_outline",
     "jcodemunch_get_symbol_source",
     "jcodemunch_search_symbols",
+    "jcodemunch_search_text",
+    "jcodemunch_index_file",
+    "jcodemunch_index_repo",
     "jcodemunch_find_importers",
     "jcodemunch_find_references",
     "jcodemunch_get_context_bundle",
@@ -56,6 +60,12 @@ function providerForToolName(toolName: string): ProviderName | undefined {
   const normalized = toolName.trim().toLowerCase();
   if (PROVIDER_TOOL_NAMES.contextMode.has(normalized)) return "contextMode";
   if (PROVIDER_TOOL_NAMES.jcodemunch.has(normalized)) return "jcodemunch";
+
+  const contextOperation = normalized.match(/^(?:(?:mcp__)?context[-_]?mode(?:__|[:/_]))(ctx_.+)$/)?.[1];
+  if (contextOperation && PROVIDER_TOOL_NAMES.contextMode.has(contextOperation)) return "contextMode";
+
+  const codeOperation = normalized.match(/^(?:(?:mcp__)?jcode[-_]?munch(?:__|[:/_]))(?:jcodemunch_)?(.+)$/)?.[1];
+  if (codeOperation && PROVIDER_TOOL_NAMES.jcodemunch.has(`jcodemunch_${codeOperation}`)) return "jcodemunch";
   return undefined;
 }
 

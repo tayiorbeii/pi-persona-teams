@@ -39,6 +39,7 @@ test("facade accepts only dual persona and ordinary acceptance", async () => {
   }));
   const identity = { runtimeName: "persona-team.engineering-manager", runId: "facade-run", childIndex: 0, launchContractDigest };
   const child = new PersonaChildRuntime({ identity, personaPath: em, workspace: root, attestationDir: join(root, ".tmp-attestations") });
+  expect(child.handle({ action: "status" }).ok).toBe(true);
   for (const method of methods) child.handle({ action: "activate", method, plannedApplication: `Use ${method} to shape the requested plan.` });
   for (const method of methods) child.handle({ action: "disposition", method, disposition: "applied", evidence: [{ kind: "artifact-section", path: "docs/plans/engineering.md", summary: `Evidence records ${method} application.` }] });
   const complete = child.handle({ action: "complete", outputSummary: "Plan produced." });

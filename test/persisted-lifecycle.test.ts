@@ -26,6 +26,7 @@ test("child contract status, ledger completion, and persisted attestation stay c
       attestationDir,
       toolNames: ["ctx_search"],
     });
+    expect(child.toolCall("read", { path: "README.md" })).toMatchObject({ allowed: false, reason: expect.stringContaining("persona_contract.status") });
     const initial = child.handle({ action: "status" });
     expect(initial.status?.completionStatus).toBe("open");
     expect(initial.status?.requiredMethods.every((method) => !method.activated)).toBe(true);
@@ -35,7 +36,9 @@ test("child contract status, ledger completion, and persisted attestation stay c
     }
     const activated = child.handle({ action: "status" });
     expect(activated.status?.requiredMethods.every((method) => method.activated)).toBe(true);
+    expect(activated.status?.toolVisibility.available).toEqual(["ctx_search"]);
     expect(child.toolCall("context-mode.search", { query: "bounded context" }).allowed).toBe(true);
+    expect(child.toolCall("structured_output", { summary: "Bounded structured finalization." })).toMatchObject({ allowed: true, substantive: true });
     expect(activated.status?.completionStatus).toBe("open");
 
     for (const method of methods) {

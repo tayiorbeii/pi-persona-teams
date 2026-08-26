@@ -33,6 +33,7 @@ function completeChild(attestationDir: string): { runId: string; childIndex: num
     workspace: root,
     attestationDir,
   });
+  expect(child.handle({ action: "status" }).ok).toBe(true);
   for (const method of methods) {
     expect(child.handle({
       action: "activate",
