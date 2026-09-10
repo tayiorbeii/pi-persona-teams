@@ -54,6 +54,7 @@ function completeChild(attestationDir: string): { runId: string; childIndex: num
 
 test("parent accepts a persisted host attestation and rejects reused run identity", async () => {
   const attestationDir = mkdtempSync(join(tmpdir(), "persona-e2e-attestation-"));
+  const attemptStartedAt = Date.now();
   const childRun = completeChild(attestationDir);
   const persisted = JSON.parse(readFileSync(childRun.attestationPath, "utf8")) as { schema: string; status: string; runId: string; childIndex: number; launchContractDigest: string };
   expect(persisted.schema).toBe("pi.persona-attestation/v1");
@@ -64,6 +65,7 @@ test("parent accepts a persisted host attestation and rejects reused run identit
   const accepted = await runPersona({
     packageRoot: root,
     workspace: root,
+    attemptStartedAt,
     delegate: async () => ({ ...childRun, output: "Plan artifact produced.", launchContractDigest: persisted.launchContractDigest, ordinaryAccepted: true }),
   }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
   expect(accepted.accepted, accepted.errors.join("; ")).toBe(true);
@@ -78,6 +80,25 @@ test("parent accepts a persisted host attestation and rejects reused run identit
   }, "persona-team.engineering-manager", "Produce a second independent engineering plan.");
   expect(reused.accepted).toBe(false);
   expect(reused.errors).toContain("independent run identity matches the earlier run");
+});
+
+test("rejects a stale persisted attestation when run identity and child index are reused", async () => {
+  const attestationDir = mkdtempSync(join(tmpdir(), "persona-stale-attestation-"));
+  const childRun = completeChild(attestationDir);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  const attemptStartedAt = Date.now();
+
+  const reused = await runPersona({
+    packageRoot: root,
+    workspace: root,
+    attestationDir,
+    attemptStartedAt,
+    delegate: async () => ({ ...childRun, attestationPath: childRun.attestationPath, ordinaryAccepted: true }),
+  }, "persona-team.engineering-manager", "Produce a second engineering plan.");
+
+  expect(reused.accepted).toBe(false);
+  expect(reused.errors).toContain("attestation issuedAt predates the current delegation attempt");
+  expect(reused.errors).toContain("attestation file mtime predates the current delegation attempt");
 });
 
 test("failure attestation persists across lifecycle shutdown and is rejected by the parent", async () => {

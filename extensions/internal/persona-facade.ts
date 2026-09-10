@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { resolvePersonaPath, validatePersonaFile, type PersonaFile } from "./persona-file.ts";
 import { verifyAttestation, readAttestation, type PersonaAttestation } from "./attestation.ts";
@@ -101,6 +101,10 @@ export interface PersonaFacadeOptions {
   toolDescriptors?: ProviderToolDescriptor[];
   attestationDir?: string;
   independentFrom?: { runtimeName: string; runId: string };
+  /** Wall-clock timestamp captured by the parent immediately before dispatch. */
+  attemptStartedAt?: number;
+  /** Fail closed unless the attestation is bound to this attempt (default: true). */
+  requireAttemptBinding?: boolean;
 }
 
 function descriptionFromFrontmatter(source: string): string {
@@ -226,7 +230,7 @@ function selectedPersona(options: PersonaFacadeOptions, runtimeName: string): { 
   }
 }
 
-function findAttestation(options: PersonaFacadeOptions, runtimeName: string, runId: string): { attestation: PersonaAttestation; path: string } | undefined {
+function findAttestation(options: PersonaFacadeOptions, runtimeName: string, runId: string, childIndex: number): { attestation: PersonaAttestation; path: string } | undefined {
   const directory = options.attestationDir ?? join(options.workspace ?? process.cwd(), ".pi-persona", "attestations");
   if (!existsSync(directory)) return undefined;
   const safeRunId = runId.replace(/[^A-Za-z0-9._-]/g, "_");
@@ -234,7 +238,7 @@ function findAttestation(options: PersonaFacadeOptions, runtimeName: string, run
     try {
       const path = join(directory, name);
       const attestation = readAttestation(path);
-      if (attestation.runtimeName === runtimeName && attestation.runId === runId) return { attestation, path };
+      if (attestation.runtimeName === runtimeName && attestation.runId === runId && attestation.childIndex === childIndex) return { attestation, path };
     } catch {
       // Ignore unrelated or partially written artifacts and keep searching.
     }
@@ -260,8 +264,28 @@ function delegationFailureResult(runtimeName: string, error: unknown, extra: { s
     ...(info.cancelled ? { timedOut: true } : {}),
   };
 }
+function attestationFreshness(attestation: PersonaAttestation, path: string | undefined, attemptStartedAt: number): { issuedAtFresh: boolean; fileMtimeFresh: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const issuedAt = Date.parse(attestation.issuedAt);
+  const issuedAtFresh = Number.isFinite(issuedAt) && issuedAt >= attemptStartedAt;
+  if (!Number.isFinite(issuedAt)) errors.push("attestation issuedAt is invalid");
+  else if (!issuedAtFresh) errors.push("attestation issuedAt predates the current delegation attempt");
+  let fileMtimeFresh = true;
+  if (path) {
+    try {
+      fileMtimeFresh = statSync(path).mtimeMs >= attemptStartedAt;
+      if (!fileMtimeFresh) errors.push("attestation file mtime predates the current delegation attempt");
+    } catch (error) {
+      fileMtimeFresh = false;
+      errors.push(`attestation file metadata could not be read: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return { issuedAtFresh, fileMtimeFresh, errors };
+}
 
 export async function runPersona(options: PersonaFacadeOptions, runtimeName: string, task: string): Promise<PersonaRunResult> {
+  const attemptStartedAt = options.attemptStartedAt ?? Date.now();
+  const requireAttemptBinding = options.requireAttemptBinding ?? process.env.PI_PERSONA_REQUIRE_ATTEMPT_BINDING !== "0";
   const selected = selectedPersona(options, runtimeName);
   if (!selected.result.valid || !selected.persona) {
     return { accepted: false, runtimeName, errors: selected.result.errors, ordinaryAccepted: false, personaAccepted: false, delegated: false };
@@ -325,9 +349,19 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   } catch (error) {
     return delegationFailureResult(runtimeName, error);
   }
+  const expectedChildIndex = delegated.childIndex ?? 0;
   let attestation: PersonaAttestation | undefined;
+  let attestationPath: string | undefined = delegated.attestationPath;
   try {
-    attestation = delegated.attestation ?? (delegated.attestationPath ? readAttestation(delegated.attestationPath) : undefined) ?? findAttestation(options, runtimeName, delegated.runId)?.attestation;
+    if (delegated.attestation) {
+      attestation = delegated.attestation;
+    } else if (delegated.attestationPath) {
+      attestation = readAttestation(delegated.attestationPath);
+    } else {
+      const found = findAttestation(options, runtimeName, delegated.runId, expectedChildIndex);
+      attestation = found?.attestation;
+      attestationPath = found?.path;
+    }
   } catch (error) {
     return { accepted: false, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, errors: [`host-authored persona attestation could not be read: ${error instanceof Error ? error.message : String(error)}`], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
   }
@@ -335,7 +369,11 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   if (!delegated.launchContractDigest) {
     return { accepted: false, runtimeName, output: delegated.output, attestation, errors: ["pi-subagents delegation response is missing the expected launchContractDigest binding"], ordinaryAccepted: false, personaAccepted: false, delegated: true };
   }
-  const expectedChildIndex = delegated.childIndex ?? 0;
+  const freshness = attestationFreshness(attestation, attestationPath, attemptStartedAt);
+  const childDigestMatches = attestation.launchContractDigest !== undefined && attestation.launchContractDigest === delegated.launchContractDigest;
+  const nonceEchoMatches = false;
+  const attemptBindingAccepted = freshness.issuedAtFresh && freshness.fileMtimeFresh;
+  const hasAttemptBinding = childDigestMatches || nonceEchoMatches || freshness.issuedAtFresh;
   const verification = verifyAttestation(attestation, {
     runtimeName,
     role: selected.persona.contract.role,
@@ -351,9 +389,12 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
     && attestation.runId === delegated.runId
     && (attestation.launchContractDigest === undefined || attestation.launchContractDigest === delegated.launchContractDigest)
     && attestation.childIndex === expectedChildIndex;
-  const errors = [...verification.errors];
+  const errors = [...verification.errors, ...freshness.errors];
+  if (!attemptBindingAccepted) errors.push("attestation freshness does not bind it to the current delegation attempt");
+  if (requireAttemptBinding && !hasAttemptBinding) errors.push("attestation has no current-attempt binding (launchContractDigest, nonce, or issuedAt)");
   if (!ordinaryAccepted) errors.push(delegated.ordinaryAcceptanceReason ?? "ordinary pi-subagents acceptance did not pass");
-  return { accepted: verification.valid && ordinaryAccepted, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, attestation, errors, ordinaryAccepted, personaAccepted: verification.valid, delegated: true };
+  const accepted = verification.valid && ordinaryAccepted && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding);
+  return { accepted, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, attestation, errors, ordinaryAccepted: ordinaryAccepted && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding), personaAccepted: verification.valid && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding), delegated: true };
 }
 
 export function packagePreflight(packageRoot: string, runtimeName: string): { valid: boolean; persona?: PersonaFile; errors: string[]; childExtension: string } {

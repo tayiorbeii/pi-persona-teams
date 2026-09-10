@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   discoverThroughPiSubagents,
@@ -299,6 +299,9 @@ export default function personaParentExtension(pi: any): void {
         const result = { accepted: false, errors: ["run requires a bounded task"], runtimeName };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
       }
+      // Capture the wall-clock start before entering the delegation seam so a
+      // response cannot reuse an attestation persisted by an earlier attempt.
+      const attemptStartedAt = Date.now();
       const result = await runPersona({
         packageRoot: root,
         workspace: process.cwd(),
@@ -308,6 +311,8 @@ export default function personaParentExtension(pi: any): void {
         ...(params.runKey !== undefined ? { idempotencyKey: params.runKey } : {}),
         ...(params.mode === "launch" ? { mode: "launch" as const } : {}),
         attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(process.cwd(), ".pi-persona", "attestations"),
+        attemptStartedAt,
+        requireAttemptBinding: process.env.PI_PERSONA_REQUIRE_ATTEMPT_BINDING !== "0",
         delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };

@@ -30,6 +30,7 @@ test("facade list and doctor work with neither optional provider", async () => {
 });
 
 test("facade accepts only dual persona and ordinary acceptance", async () => {
+  const attemptStartedAt = Date.now();
   const launchContractDigest = sha256(JSON.stringify({
     agent: "persona-team.engineering-manager",
     task: "Produce a bounded engineering plan.",
@@ -44,7 +45,7 @@ test("facade accepts only dual persona and ordinary acceptance", async () => {
   for (const method of methods) child.handle({ action: "activate", method, plannedApplication: `Use ${method} to shape the requested plan.` });
   for (const method of methods) child.handle({ action: "disposition", method, disposition: "applied", evidence: [{ kind: "artifact-section", path: "docs/plans/engineering.md", summary: `Evidence records ${method} application.` }] });
   const complete = child.handle({ action: "complete", outputSummary: "Plan produced." });
-  const accepted = await runPersona({ packageRoot: root, workspace: root, delegate: async () => ({ runId: "facade-run", childIndex: 0, output: "Plan produced.", attestation: complete.attestation, launchContractDigest, ordinaryAccepted: true }) }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
+  const accepted = await runPersona({ packageRoot: root, workspace: root, attemptStartedAt, delegate: async () => ({ runId: "facade-run", childIndex: 0, output: "Plan produced.", attestation: complete.attestation, launchContractDigest, ordinaryAccepted: true }) }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
   expect(accepted.accepted).toBe(true);
   expect(accepted.launchContractDigest).toBe(launchContractDigest);
   const failedAttestation = { ...complete.attestation!, status: "failed" as const, failureReasons: ["child failed"] };
