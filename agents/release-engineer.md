@@ -6,9 +6,9 @@ description: Prepare a precise, reversible release plan and verify an explicitly
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true
-timeoutMs: 86400000
+timeoutMs: 600000
 turnBudget: {"maxTurns":8,"graceTurns":1}
-toolBudget: {"soft":160,"hard":200,"block":["*"]}
+toolBudget: {"soft":12,"hard":18,"block":["*"]}
 defaultContext: fresh
 subagentOnlyExtensions: ../extensions/persona-child.ts
 thinking: high

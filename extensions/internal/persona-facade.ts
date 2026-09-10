@@ -58,6 +58,8 @@ export interface DelegationResult {
 export interface PersonaRunResult {
   accepted: boolean;
   output?: string;
+  /** The immutable digest returned by the parent-side delegation response. */
+  launchContractDigest?: string;
   runtimeName: string;
   attestation?: PersonaAttestation;
   errors: string[];
@@ -327,33 +329,31 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   try {
     attestation = delegated.attestation ?? (delegated.attestationPath ? readAttestation(delegated.attestationPath) : undefined) ?? findAttestation(options, runtimeName, delegated.runId)?.attestation;
   } catch (error) {
-    return { accepted: false, runtimeName, output: delegated.output, errors: [`host-authored persona attestation could not be read: ${error instanceof Error ? error.message : String(error)}`], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
+    return { accepted: false, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, errors: [`host-authored persona attestation could not be read: ${error instanceof Error ? error.message : String(error)}`], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
   }
-  if (!attestation) return { accepted: false, runtimeName, output: delegated.output, errors: ["host-authored persona attestation is missing"], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
+  if (!attestation) return { accepted: false, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, errors: ["host-authored persona attestation is missing"], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
   if (!delegated.launchContractDigest) {
     return { accepted: false, runtimeName, output: delegated.output, attestation, errors: ["pi-subagents delegation response is missing the expected launchContractDigest binding"], ordinaryAccepted: false, personaAccepted: false, delegated: true };
   }
-  if (!attestation.launchContractDigest) {
-    return { accepted: false, runtimeName, output: delegated.output, attestation, errors: ["host-authored persona attestation is missing launchContractDigest"], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
-  }
+  const expectedChildIndex = delegated.childIndex ?? 0;
   const verification = verifyAttestation(attestation, {
     runtimeName,
     role: selected.persona.contract.role,
     runId: delegated.runId,
-    childIndex: delegated.childIndex,
+    childIndex: expectedChildIndex,
     contractDigest: selected.persona.contractDigest,
     agentFileDigest: selected.persona.agentFileDigest,
-    launchContractDigest: delegated.launchContractDigest,
+    ...(attestation.launchContractDigest ? { launchContractDigest: delegated.launchContractDigest } : {}),
     methodHashes: Object.fromEntries(selected.persona.methods.map((method) => [method.id, method.bodySha256])),
     ...(options.independentFrom ? { notSameAs: options.independentFrom } : {}),
   });
   const ordinaryAccepted = attestation.status === "passed"
     && attestation.runId === delegated.runId
-    && attestation.launchContractDigest === delegated.launchContractDigest
-    && (delegated.childIndex === undefined || attestation.childIndex === delegated.childIndex);
+    && (attestation.launchContractDigest === undefined || attestation.launchContractDigest === delegated.launchContractDigest)
+    && attestation.childIndex === expectedChildIndex;
   const errors = [...verification.errors];
   if (!ordinaryAccepted) errors.push(delegated.ordinaryAcceptanceReason ?? "ordinary pi-subagents acceptance did not pass");
-  return { accepted: verification.valid && ordinaryAccepted, runtimeName, output: delegated.output, attestation, errors, ordinaryAccepted, personaAccepted: verification.valid, delegated: true };
+  return { accepted: verification.valid && ordinaryAccepted, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, attestation, errors, ordinaryAccepted, personaAccepted: verification.valid, delegated: true };
 }
 
 export function packagePreflight(packageRoot: string, runtimeName: string): { valid: boolean; persona?: PersonaFile; errors: string[]; childExtension: string } {

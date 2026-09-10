@@ -20,9 +20,9 @@
 
 ### Official pi-subagents integration
 
-- Fixed ordinary acceptance to require a completed delegation plus a passed, run-bound, launch-contract-bound persona attestation; propagated the configured attestation directory and child index.
-- Widened the pi-coding-agent peer range through `<0.85.0` and reconciled pi-subagents metadata to the installed `0.47.1` line.
-- Switched the compatibility floor to official `pi-subagents` 0.51 and documented merged PR #1251; official `main` is required until the post-merge npm release.
+- Fixed ordinary acceptance to require a completed delegation plus a passed persona attestation bound to runtime name, child run ID, and child index; the parent response launch-contract digest is always recorded, and an optional child digest is checked when present.
+- Widened the pi-coding-agent peer range through `<0.85.0` and reconciled the supported pi-subagents peer range to the installed `0.47.1` line.
+- Exercised the production-shaped `persona_team` event path through the installed pi-subagents delegation bridge, including acceptance of a child attestation that omits the optional digest.
 - Made all canonical personas inherit Pi's normal builtin tools, ambient extensions, project context, and discovered skills by omitting restrictive `tools:`/`extensions:` frontmatter; added `fffind`/`ffgrep` role-policy coverage while retaining trusted provider detection and mandatory first-call child tool visibility reporting.
 - Added inherited skill discovery and explicit `octocode-research`, `ponytail`, and `i-have-adhd` routing rules without making optional user skills hard preflight dependencies.
 - Added 10-minute child timeouts, aligned the parent delegation response deadline to the same 10-minute budget, eight-turn execution plus one finalization grace turn, and 18-call hard tool budgets; partial or timed-out transcripts are not evidence.

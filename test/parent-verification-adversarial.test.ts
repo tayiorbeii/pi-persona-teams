@@ -19,7 +19,7 @@ const runtimeNames = [
 
 describe("adversarial parent verification", () => {
   test("delegation response timeout matches the canonical ten-minute persona budget", () => {
-    expect(PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS).toBe(90_000_000);
+    expect(PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS).toBe(600_000);
   });
 
   test("rejects a delegation result that omits the immutable launch digest binding", async () => {
@@ -39,7 +39,7 @@ describe("adversarial parent verification", () => {
     expect(result.errors).toContain("pi-subagents delegation response is missing the expected launchContractDigest binding");
   });
 
-  test("does not fabricate a missing digest into received attestation evidence", async () => {
+  test("rejects a malformed attestation even when the response digest is present", async () => {
     const result = await runPersona({
       packageRoot: root,
       workspace: root,
@@ -53,7 +53,7 @@ describe("adversarial parent verification", () => {
 
     expect(result.accepted).toBe(false);
     expect(result.personaAccepted).toBe(false);
-    expect(result.errors).toContain("host-authored persona attestation is missing launchContractDigest");
+    expect(result.errors).toContain("attestation status is invalid");
   });
 
   test("doctor is not ready when preflight validates only one canonical runtime", async () => {

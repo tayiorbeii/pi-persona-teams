@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
 import {
   discoverThroughPiSubagents,
   listPersonas,

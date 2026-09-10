@@ -2,37 +2,22 @@
 
 The verified runtime target is:
 
-- Pi coding agent `0.82.1`
-- official `pi-subagents` `main` at or after merged PR #1251 (`aaa303f6367047c1c521d31f635619b8a798801c`; package version currently `0.51.0`)
+- Pi coding agent `0.82.1` (peer range `>=0.82.1 <0.85.0`)
+- official `pi-subagents` `0.47.1` (peer range `>=0.47.1 <0.48.0`)
 - Bun `1.3.1`
 
 ## Executable compatibility probe
 
-Run this against the installed package:
+Run this against the installed package from the project root:
 
 ```bash
-PI_SUBAGENTS_ROOT="$(npm root -g)/pi-subagents" bun - <<'BUN'
-import { readFileSync } from "node:fs";
-const root = process.env.PI_SUBAGENTS_ROOT;
-const pkg = JSON.parse(readFileSync(`${root}/package.json`, "utf8"));
-const extension = readFileSync(`${root}/src/extension/index.ts`, "utf8");
-const hasDelegationExport = /export[^\n]*(?:delegate|runSubagent|preflight)/i.test(extension);
-const hasDelegationEvent = /SUBAGENT_DELEGATION_REQUEST_EVENT|resolveSubagentLaunchContract/.test(extension);
-console.log(JSON.stringify({
-  version: pkg.version,
-  packageExports: pkg.exports ?? null,
-  extensionExports: extension.split("\n").filter((line) => /^export\s/.test(line)),
-  hasDelegationExport,
-  hasDelegationEvent,
-  conclusion: hasDelegationExport || hasDelegationEvent ? "inspect further" : "no public extension-side delegation seam"
-}, null, 2));
-BUN
+node -e 'console.log(require("./node_modules/pi-subagents/package.json").version)'
 ```
 
-Official `pi-subagents` 0.51 exposes public package APIs including preflight, while its extension still owns model-callable child execution and lifecycle. PR #1251 now resolves explicit relative `extensions` and `subagentOnlyExtensions` entries against the defining agent file. npm `0.51.0` was published before that merge; use official `main` until a later npm release contains the merge commit.
+`persona_team.run` uses the installed package's exported `preflight` API and structured delegation event constants. The parent emits a correlated request on `prompt-template:subagent:request` and accepts only the matching terminal response from `prompt-template:subagent:response`. The installed `0.47.1` wire contract does not include a request `version` field.
 
-## Bounded limitation
+## Acceptance and digest propagation
 
-`extensions/persona-parent.ts` does not import `pi-subagents` internals, invent event names, spawn a child process, or claim a fake accepted run. `persona_team.list` remains local canonical-file discovery. `persona_team.doctor` reports the model-tool-only limitation. `persona_team.run` returns failed evidence explaining that the parent model must invoke the normal `subagent` tool directly. The pure facade still accepts a host-supplied supported delegation callback for environments that provide one.
+The child attestation always binds the persona runtime name, child run ID, and child index. In `pi-subagents` `0.47.1`, the child environment does not expose the launch-contract digest, so the child attestation may omit that optional field. The parent still requires the response digest to equal the digest returned by preflight and records it as `launchContractDigest` in the acceptance receipt. If a child attestation includes a digest, it must equal the response digest as well. The real event-bridge integration test covers this installed-package shape.
 
-The package uses the official package-agent manifest key (`pi.subagents.agents`), merged agent-relative `subagentOnlyExtensions` resolution, omitted `tools:`/`extensions:` fields for normal Pi capability inheritance, inherited skill discovery, and agent-level timeout/turn/tool budgets. Broader compatibility requires a new verification pass when any of those public contracts change.
+The package uses the official package-agent manifest key (`pi.subagents.agents`), agent-relative `subagentOnlyExtensions` resolution, omitted restrictive `tools:`/`extensions:` fields for normal Pi capability inheritance, inherited skill discovery, and bounded agent timeout/turn/tool budgets. Broader compatibility requires a new verification pass when any public upstream contract changes.
