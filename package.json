@@ -10,8 +10,8 @@
     "subagents": { "agents": ["./agents"] }
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.82.1 <0.83.0",
-    "pi-subagents": ">=0.51.0 <0.53.0"
+    "@earendil-works/pi-coding-agent": ">=0.82.1 <0.85.0",
+    "pi-subagents": ">=0.47.1 <0.48.0"
   },
   "scripts": {
     "test": "bun test test/*.test.ts",

@@ -84,7 +84,7 @@ export interface LedgerPersistenceOptions {
 }
 
 const ledgerPaths = new WeakMap<PersonaLedger, string>();
-const fs = nodeFs as Record<string, (...args: any[]) => any>;
+const fs = nodeFs as unknown as Record<string, (...args: any[]) => any>;
 let temporarySequence = 0;
 
 function safeLedgerToken(value: string): string {

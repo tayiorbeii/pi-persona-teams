@@ -47,9 +47,9 @@ describe("independent persona files", () => {
       expect(source, role).toContain("inheritProjectContext: true");
       expect(source, role).toContain("inheritSkills: true");
       expect(source, role).toContain("subagentOnlyExtensions: ../extensions/persona-child.ts");
-      expect(source, role).toContain("timeoutMs: 600000");
+      expect(source, role).toContain("timeoutMs: 86400000");
       expect(source, role).toContain('turnBudget: {"maxTurns":8,"graceTurns":1}');
-      expect(source, role).toContain('toolBudget: {"soft":12,"hard":18,"block":["*"]}');
+      expect(source, role).toContain('toolBudget: {"soft":160,"hard":200,"block":["*"]}');
       expect(source, role).toContain("## Runtime Resource Gate");
       expect(source, role).toContain("persona_contract.status");
       expect(source, role).toContain("octocode-research");

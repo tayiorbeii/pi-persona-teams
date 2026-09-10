@@ -347,7 +347,10 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
     methodHashes: Object.fromEntries(selected.persona.methods.map((method) => [method.id, method.bodySha256])),
     ...(options.independentFrom ? { notSameAs: options.independentFrom } : {}),
   });
-  const ordinaryAccepted = delegated.ordinaryAccepted === true;
+  const ordinaryAccepted = attestation.status === "passed"
+    && attestation.runId === delegated.runId
+    && attestation.launchContractDigest === delegated.launchContractDigest
+    && (delegated.childIndex === undefined || attestation.childIndex === delegated.childIndex);
   const errors = [...verification.errors];
   if (!ordinaryAccepted) errors.push(delegated.ordinaryAcceptanceReason ?? "ordinary pi-subagents acceptance did not pass");
   return { accepted: verification.valid && ordinaryAccepted, runtimeName, output: delegated.output, attestation, errors, ordinaryAccepted, personaAccepted: verification.valid, delegated: true };

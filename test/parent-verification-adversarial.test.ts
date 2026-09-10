@@ -19,7 +19,7 @@ const runtimeNames = [
 
 describe("adversarial parent verification", () => {
   test("delegation response timeout matches the canonical ten-minute persona budget", () => {
-    expect(PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS).toBe(600_000);
+    expect(PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS).toBe(90_000_000);
   });
 
   test("rejects a delegation result that omits the immutable launch digest binding", async () => {

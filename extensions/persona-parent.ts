@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import {
   discoverThroughPiSubagents,
   listPersonas,
@@ -307,6 +308,7 @@ export default function personaParentExtension(pi: any): void {
         ...(params.progressTimeoutMs !== undefined ? { progressTimeoutMs: params.progressTimeoutMs } : {}),
         ...(params.runKey !== undefined ? { idempotencyKey: params.runKey } : {}),
         ...(params.mode === "launch" ? { mode: "launch" as const } : {}),
+        attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(process.cwd(), ".pi-persona", "attestations"),
         delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };

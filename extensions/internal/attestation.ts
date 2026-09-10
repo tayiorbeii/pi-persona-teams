@@ -5,7 +5,7 @@ import type { PersonaFile } from "./persona-file.ts";
 import { sha256 } from "./persona-file.ts";
 import { ledgerDeficiencies, methodEntries, type PersonaLedger } from "./ledger.ts";
 
-const fs = nodeFs as Record<string, (...args: any[]) => any>;
+const fs = nodeFs as unknown as Record<string, (...args: any[]) => any>;
 let temporarySequence = 0;
 
 export interface PersonaAttestationMethod {

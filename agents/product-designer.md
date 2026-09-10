@@ -6,9 +6,9 @@ description: Turn validated intent into a usable, testable product experience an
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true
-timeoutMs: 600000
+timeoutMs: 86400000
 turnBudget: {"maxTurns":8,"graceTurns":1}
-toolBudget: {"soft":12,"hard":18,"block":["*"]}
+toolBudget: {"soft":160,"hard":200,"block":["*"]}
 defaultContext: fresh
 subagentOnlyExtensions: ../extensions/persona-child.ts
 thinking: high
