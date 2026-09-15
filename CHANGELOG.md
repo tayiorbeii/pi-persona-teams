@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Delegation timeout hardening
+
+- Removed the unsupported `version` field from structured delegation requests: pi-subagents bridges reject unknown request fields and never echo a version in responses, so the field turned every delegation into a silent `invalid_request` and a ten-minute parent timeout. The request wire format is pinned by a regression test.
+- Surfaced the child runId at delegation acceptance: the parent now also subscribes to the bridge's `started`/`update` events and exposes a `LaunchedAck` (live `runId`, attempt identity, `cancel()`) distinct from terminal completion; run results carry `runId` and a `timedOut` flag even when a delegation wait times out.
+- Made response timeouts cancel the child: on timeout the parent emits the bridge cancel event with the attempt identity so persona children are aborted instead of orphaned, and `invalid_request` terminals now fail fast instead of blocking for the full deadline.
+- Made the delegation deadline configurable per call via `responseTimeoutMs` (default 600s), which also bounds the child run at the parent wait minus a 30-second margin so typed bridge terminals (`timed_out`/`cancelled`) normally arrive before the parent's generic timer fires.
+- Deduplicated identical in-flight runs: `run` accepts a `runKey` (default: a digest of persona and task) and retries attach to the running child instead of launching duplicate children; map entries clear at terminal so intentional re-runs start fresh.
+- Added `mode: "launch"` to `run`, returning a run handle (`status`, `runId`, `runKey`, attempt identity) as soon as the bridge accepts the attempt; a later `wait` call with the same `runKey` attaches to the same child for the terminal result and attestation verification.
+- Older pi-subagents bridges without `started`/`update`/`cancel` delegation events degrade gracefully (launch acks come from terminal responses, and timeouts stop emitting cancels).
+
 ### Official pi-subagents integration
 
 - Switched the compatibility floor to official `pi-subagents` 0.51 and documented merged PR #1251; official `main` is required until the post-merge npm release.
