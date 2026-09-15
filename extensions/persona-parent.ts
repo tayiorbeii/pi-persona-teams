@@ -33,6 +33,34 @@ function toolsFromPi(pi: any): Array<{ name?: string; description?: string; sour
   return typeof pi.getAllTools === "function" ? pi.getAllTools().map((tool: { name?: string; description?: string; source?: string; provenance?: string }) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance })) : [];
 }
 
+export interface PersonaDelegationIdentity {
+  requestId: string;
+  ownerRunId: string;
+  nodeId: string;
+}
+
+/**
+ * Builds the structured delegation request emitted on the pi-subagents request
+ * event. The bridge rejects unknown request fields (delegation-request.ts
+ * supportedFields), so this wire format must stay exactly within the fields
+ * every supported bridge version accepts — notably it must NOT carry a
+ * `version` key: bridges do not accept it in requests and do not echo one in
+ * responses.
+ */
+export function buildDelegationRequest(input: PersonaDelegationIdentity & { agent: string; task: string; context: "fresh"; workspace: string }): Record<string, unknown> {
+  return {
+    requestId: input.requestId,
+    ownerRunId: input.ownerRunId,
+    nodeId: input.nodeId,
+    agent: input.agent,
+    task: input.task,
+    context: input.context,
+    cwd: input.workspace,
+    artifacts: true,
+    result: { kind: "text" as const },
+  };
+}
+
 async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest): Promise<DelegationResult> {
   const preflightName: string = "pi-subagents/preflight";
   const preflight = await import(preflightName) as {
@@ -82,25 +110,21 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
   const requestId = `persona-${Date.now()}-${++requestSequence}`;
   const ownerRunId = `persona-parent-${requestId}`;
   const nodeId = `persona-team:${request.agent}:${requestId}`;
-  const delegationRequest = {
-    version: 2 as const,
+  const delegationRequest = buildDelegationRequest({
     requestId,
     ownerRunId,
     nodeId,
     agent: request.agent,
     task: request.task,
     context: request.context,
-    cwd: workspace,
-    artifacts: true,
-    result: { kind: "text" as const },
-  };
+    workspace,
+  });
 
   return await new Promise<DelegationResult>((resolveResult, reject) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = pi.events.on(delegation.SUBAGENT_DELEGATION_RESPONSE_EVENT, (payload: unknown) => {
       const response = payload as {
-        version?: number;
         requestId?: string;
         ownerRunId?: string;
         nodeId?: string;
@@ -110,7 +134,7 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
         launchContractDigest?: string;
         result?: { kind?: string; text?: string; value?: unknown };
       };
-      if (response.version !== 2 || response.requestId !== requestId || response.ownerRunId !== ownerRunId || response.nodeId !== nodeId || settled) return;
+      if (response.requestId !== requestId || response.ownerRunId !== ownerRunId || response.nodeId !== nodeId || settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
       if (typeof unsubscribe === "function") unsubscribe();
