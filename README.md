@@ -13,7 +13,7 @@ pi install git:github.com/nicobailon/pi-subagents
 pi install git:github.com/tayiorbeii/pi-persona-teams
 ```
 
-The canonical agents intentionally omit `tools:` and `extensions:` frontmatter. Official `pi-subagents` therefore preserves Pi's normal builtin and discovered extension registry—including tools such as `fffind`, `ffgrep`, and the generic `mcp` gateway—instead of replacing it with a stale package allowlist. `persona_contract.status` reports the actual registry; context-mode and jCodeMunch direct tools are preferred when they are present, with the generic MCP route or bounded native tools as fallback. Octocode remains a read-only CLI route for external GitHub evidence; it is not an MCP provider and is restricted to the version-pinned `npx -y octocode@18.3.0` command surface.
+Each canonical agent declares an explicit `tools:` allowlist covering its native tools, `persona_contract`, and the direct context-mode/jCodeMunch/jDocMunch MCP tools, because `pi-subagents` only grants a child direct MCP tools that are listed in its allowlist. The `persona-files` test pins the required entries so the allowlists cannot silently drift. `persona_contract.status` reports the actual registry; context-mode and jCodeMunch direct tools are preferred when they are present, with the generic MCP route or bounded native tools as fallback. Octocode remains a read-only CLI route for external GitHub evidence; it is not an MCP provider and is restricted to the version-pinned `npx -y octocode@18.3.0` command surface.
 
 The package does not replace `pi-subagents` or start a custom child launcher. Discovery, child lifecycle, contexts, worktrees, async runs, and ordinary acceptance remain owned by `pi-subagents`.
 
