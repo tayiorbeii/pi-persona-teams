@@ -29,6 +29,8 @@ export interface DelegationRequest {
   acceptance?: unknown;
   /** Per-call bound for this delegation: parent wait and child run deadline (defaults to 600s). */
   responseTimeoutMs?: number;
+  /** Idempotency key: an in-flight run with the same key is attached to instead of relaunched. */
+  idempotencyKey?: string;
   /**
    * Invoked once when the bridge accepts the attempt (started event) or the
    * first progress update carries the child runId — always before terminal
@@ -71,6 +73,8 @@ export interface PersonaFacadeOptions {
   delegate?: (request: DelegationRequest) => Promise<DelegationResult>;
   /** Per-call delegation bound forwarded to the delegate seam (defaults to 600s). */
   responseTimeoutMs?: number;
+  /** Idempotency key forwarded to the delegate seam so identical in-flight runs dedupe. */
+  idempotencyKey?: string;
   toolNames?: string[];
   environment?: Record<string, string | undefined>;
   toolDescriptors?: ProviderToolDescriptor[];
@@ -232,6 +236,7 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
       task,
       context: "fresh",
       ...(options.responseTimeoutMs !== undefined ? { responseTimeoutMs: options.responseTimeoutMs } : {}),
+      ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
     });
   } catch (error) {
     const info = error as { runId?: string; cancelled?: boolean; status?: string };

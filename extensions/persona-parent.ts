@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -8,7 +9,7 @@ import {
   type DelegationRequest,
   type DelegationResult,
 } from "./internal/persona-facade.ts";
-import { waitForDelegationResponse, type DelegationWaitEventNames } from "./internal/delegation-wait.ts";
+import { waitForDelegationResponse, type DelegationWaitEventNames, type LaunchedAck } from "./internal/delegation-wait.ts";
 
 let requestSequence = 0;
 
@@ -22,6 +23,18 @@ export const PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS = 600_000;
  */
 export const PERSONA_CHILD_TIMEOUT_MARGIN_MS = 30_000;
 
+/**
+ * In-flight delegations keyed by idempotency key. A retry of a run that is
+ * still executing attaches to the original attempt (same promise, same
+ * LaunchedAck, one child) instead of launching a duplicate child. Entries are
+ * removed at terminal, so an intentional re-run after completion starts a
+ * fresh child. Deliberately parent-side only: the bridge silently drops
+ * requests reusing a settled attempt key, so stable bridge identities across
+ * retries would hang instead of deduping.
+ */
+const pendingDelegations = new Map<string, Promise<DelegationResult>>();
+const launchedAcks = new Map<string, LaunchedAck>();
+
 function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..");
 }
@@ -34,6 +47,7 @@ function toolParameters(): Record<string, unknown> {
       persona: { type: "string" },
       task: { type: "string" },
       responseTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Per-call bound for this delegation: the parent wait and the child run deadline (default 600000)." },
+      runKey: { type: "string", description: "Idempotency key: re-running with the same runKey attaches to the in-flight child instead of launching a duplicate. Default: a digest of persona+task." },
     },
     required: ["action"],
   };
@@ -82,7 +96,13 @@ export function resolveChildTimeoutMs(waitMs: number): number {
   return Math.min(Math.max(1_000, waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS), 2_147_483_647);
 }
 
-async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest): Promise<DelegationResult> {
+/** The caller's idempotency key, or a stable digest of agent+task so plain retries dedupe. */
+export function idempotencyKeyFor(request: Pick<DelegationRequest, "agent" | "task" | "idempotencyKey">): string {
+  if (request.idempotencyKey) return request.idempotencyKey;
+  return createHash("sha256").update(`${request.agent}\u0000${request.task}`).digest("hex").slice(0, 24);
+}
+
+async function startDelegation(pi: any, workspace: string, request: DelegationRequest, key: string): Promise<DelegationResult> {
   const preflightName: string = "pi-subagents/preflight";
   const preflight = await import(preflightName) as {
     resolveSubagentLaunchContract?: (input: Record<string, unknown>) => Promise<{
@@ -163,7 +183,10 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
     delegationRequest,
     expectedLaunchContractDigest,
     waitMs,
-    ...(request.onLaunched ? { onLaunched: request.onLaunched } : {}),
+    onLaunched: (ack) => {
+      launchedAcks.set(key, ack);
+      request.onLaunched?.(ack);
+    },
   }).then((success) => ({
     output: success.output,
     runId: success.runId,
@@ -173,6 +196,40 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
   }));
 }
 
+/**
+ * Delegates a persona run through pi-subagents, deduplicating identical
+ * in-flight runs: a retry with the same idempotency key (explicit runKey, or
+ * the same agent+task) attaches to the original attempt instead of launching
+ * a duplicate child.
+ */
+export async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest): Promise<DelegationResult> {
+  const key = idempotencyKeyFor(request);
+  const existing = pendingDelegations.get(key);
+  if (existing) {
+    const ack = launchedAcks.get(key);
+    if (ack && request.onLaunched) {
+      try {
+        request.onLaunched(ack);
+      } catch {
+        // Ack consumers must not fail the attach.
+      }
+    }
+    return existing;
+  }
+  const run = startDelegation(pi, workspace, request, key);
+  pendingDelegations.set(key, run);
+  run.catch(() => {
+    // Launch-mode callers may never await this promise; keep the rejection
+    // handled so it cannot surface as an unhandled rejection.
+  });
+  try {
+    return await run;
+  } finally {
+    if (pendingDelegations.get(key) === run) pendingDelegations.delete(key);
+    launchedAcks.delete(key);
+  }
+}
+
 export default function personaParentExtension(pi: any): void {
   const root = packageRoot();
   pi.registerTool({
@@ -180,7 +237,7 @@ export default function personaParentExtension(pi: any): void {
     label: "Persona Team",
     description: "List, diagnose, or run a canonical pi-persona-teams persona.",
     parameters: toolParameters(),
-    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number }) {
+    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; runKey?: string }) {
       if (params.action === "list") {
         const result = listPersonas(root);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
@@ -206,6 +263,7 @@ export default function personaParentExtension(pi: any): void {
         packageRoot: root,
         workspace: process.cwd(),
         ...(params.responseTimeoutMs !== undefined ? { responseTimeoutMs: params.responseTimeoutMs } : {}),
+        ...(params.runKey !== undefined ? { idempotencyKey: params.runKey } : {}),
         delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
