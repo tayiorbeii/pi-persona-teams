@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildDelegationRequest, PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS } from "../extensions/persona-parent.ts";
+import { buildDelegationRequest, PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS, resolveChildTimeoutMs, resolveWaitMs } from "../extensions/persona-parent.ts";
 import { waitForDelegationResponse, type DelegationWaitEventNames, type LaunchedAck } from "../extensions/internal/delegation-wait.ts";
 import { runPersona } from "../extensions/internal/persona-facade.ts";
 import { join } from "node:path";
@@ -65,6 +65,7 @@ describe("delegation request wire format", () => {
       task: "Produce a bounded test plan.",
       context: "fresh",
       workspace: "/tmp/persona-workspace",
+      timeoutMs: 570_000,
     });
 
     // pi-subagents bridges reject unknown request fields (delegation-request.ts
@@ -79,11 +80,49 @@ describe("delegation request wire format", () => {
     expect(request.context).toBe("fresh");
     expect(request.cwd).toBe("/tmp/persona-workspace");
     expect(request.artifacts).toBe(true);
+    expect(request.timeoutMs).toBe(570_000);
     expect(request.result).toEqual({ kind: "text" });
   });
 
   test("parent response deadline default stays at the canonical ten-minute persona budget", () => {
     expect(PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS).toBe(600_000);
+  });
+});
+
+describe("per-call delegation deadline resolution", () => {
+  test("defaults to the 600s parent budget and keeps the child strictly inside it", () => {
+    expect(resolveWaitMs(undefined)).toBe(600_000);
+    expect(resolveChildTimeoutMs(resolveWaitMs(undefined))).toBe(570_000);
+  });
+
+  test("honors a per-call override for both parent wait and child run bound", () => {
+    const waitMs = resolveWaitMs(45_000);
+    expect(waitMs).toBe(45_000);
+    expect(resolveChildTimeoutMs(waitMs)).toBe(15_000);
+  });
+
+  test("clamps per-call values into the bridge-validated range", () => {
+    expect(resolveWaitMs(1)).toBe(1_000);
+    expect(resolveWaitMs(Number.MAX_SAFE_INTEGER)).toBe(2_147_483_647);
+    expect(resolveChildTimeoutMs(1_000)).toBe(1_000);
+    expect(resolveChildTimeoutMs(2_147_483_647)).toBe(2_147_453_647);
+  });
+
+  test("facade forwards the per-call deadline into the delegate request", async () => {
+    const seen: Array<unknown> = [];
+    const result = await runPersona({
+      packageRoot: root,
+      workspace: root,
+      responseTimeoutMs: 123_456,
+      delegate: async (request) => {
+        seen.push(request);
+        return { runId: "deadline-probe", ordinaryAccepted: false };
+      },
+    }, "persona-team.engineering-manager", "Produce a bounded plan.");
+
+    expect(result.delegated).toBe(true);
+    expect(seen.length).toBe(1);
+    expect((seen[0] as { responseTimeoutMs?: number }).responseTimeoutMs).toBe(123_456);
   });
 });
 

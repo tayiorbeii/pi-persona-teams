@@ -13,6 +13,14 @@ import { waitForDelegationResponse, type DelegationWaitEventNames } from "./inte
 let requestSequence = 0;
 
 export const PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS = 600_000;
+/**
+ * Child runs must terminal strictly before the parent gives up, so typed
+ * bridge terminals (timed_out/cancelled) arrive instead of the parent's
+ * generic timeout racing them. The per-call child bound is
+ * waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS, clamped to >=1s and <=2^31-1
+ * (the bridge validates integer timeoutMs in that range).
+ */
+export const PERSONA_CHILD_TIMEOUT_MARGIN_MS = 30_000;
 
 function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,6 +33,7 @@ function toolParameters(): Record<string, unknown> {
       action: { type: "string", enum: ["list", "doctor", "run"] },
       persona: { type: "string" },
       task: { type: "string" },
+      responseTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Per-call bound for this delegation: the parent wait and the child run deadline (default 600000)." },
     },
     required: ["action"],
   };
@@ -48,7 +57,7 @@ export interface PersonaDelegationIdentity {
  * `version` key: bridges do not accept it in requests and do not echo one in
  * responses.
  */
-export function buildDelegationRequest(input: PersonaDelegationIdentity & { agent: string; task: string; context: "fresh"; workspace: string }): Record<string, unknown> {
+export function buildDelegationRequest(input: PersonaDelegationIdentity & { agent: string; task: string; context: "fresh"; workspace: string; timeoutMs: number }): Record<string, unknown> {
   return {
     requestId: input.requestId,
     ownerRunId: input.ownerRunId,
@@ -58,8 +67,19 @@ export function buildDelegationRequest(input: PersonaDelegationIdentity & { agen
     context: input.context,
     cwd: input.workspace,
     artifacts: true,
+    timeoutMs: input.timeoutMs,
     result: { kind: "text" as const },
   };
+}
+
+/** Parent wait bound for one delegation: per-call value, else the 600s default, clamped to [1s, 2^31-1]. */
+export function resolveWaitMs(responseTimeoutMs?: number): number {
+  return Math.max(1_000, Math.min(responseTimeoutMs ?? PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS, 2_147_483_647));
+}
+
+/** Child run bound for the same delegation: strictly inside the parent wait so bridge terminals win the race. */
+export function resolveChildTimeoutMs(waitMs: number): number {
+  return Math.min(Math.max(1_000, waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS), 2_147_483_647);
 }
 
 async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest): Promise<DelegationResult> {
@@ -116,6 +136,7 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
   const requestId = `persona-${Date.now()}-${++requestSequence}`;
   const ownerRunId = `persona-parent-${requestId}`;
   const nodeId = `persona-team:${request.agent}:${requestId}`;
+  const waitMs = resolveWaitMs(request.responseTimeoutMs);
   const delegationRequest = buildDelegationRequest({
     requestId,
     ownerRunId,
@@ -124,6 +145,7 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
     task: request.task,
     context: request.context,
     workspace,
+    timeoutMs: resolveChildTimeoutMs(waitMs),
   });
 
   const eventNames: DelegationWaitEventNames = {
@@ -140,7 +162,7 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
     identity: { requestId, ownerRunId, nodeId },
     delegationRequest,
     expectedLaunchContractDigest,
-    waitMs: PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS,
+    waitMs,
     ...(request.onLaunched ? { onLaunched: request.onLaunched } : {}),
   }).then((success) => ({
     output: success.output,
@@ -158,7 +180,7 @@ export default function personaParentExtension(pi: any): void {
     label: "Persona Team",
     description: "List, diagnose, or run a canonical pi-persona-teams persona.",
     parameters: toolParameters(),
-    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string }) {
+    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number }) {
       if (params.action === "list") {
         const result = listPersonas(root);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
@@ -183,6 +205,7 @@ export default function personaParentExtension(pi: any): void {
       const result = await runPersona({
         packageRoot: root,
         workspace: process.cwd(),
+        ...(params.responseTimeoutMs !== undefined ? { responseTimeoutMs: params.responseTimeoutMs } : {}),
         delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };

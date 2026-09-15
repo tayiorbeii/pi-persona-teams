@@ -27,6 +27,8 @@ export interface DelegationRequest {
   task: string;
   context: "fresh";
   acceptance?: unknown;
+  /** Per-call bound for this delegation: parent wait and child run deadline (defaults to 600s). */
+  responseTimeoutMs?: number;
   /**
    * Invoked once when the bridge accepts the attempt (started event) or the
    * first progress update carries the child runId — always before terminal
@@ -67,6 +69,8 @@ export interface PersonaFacadeOptions {
   workspace?: string;
   discover?: (cwd: string) => Promise<PersonaDiscovery[]> | PersonaDiscovery[];
   delegate?: (request: DelegationRequest) => Promise<DelegationResult>;
+  /** Per-call delegation bound forwarded to the delegate seam (defaults to 600s). */
+  responseTimeoutMs?: number;
   toolNames?: string[];
   environment?: Record<string, string | undefined>;
   toolDescriptors?: ProviderToolDescriptor[];
@@ -223,7 +227,12 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   }
   let delegated: DelegationResult;
   try {
-    delegated = await options.delegate({ agent: runtimeName, task, context: "fresh" });
+    delegated = await options.delegate({
+      agent: runtimeName,
+      task,
+      context: "fresh",
+      ...(options.responseTimeoutMs !== undefined ? { responseTimeoutMs: options.responseTimeoutMs } : {}),
+    });
   } catch (error) {
     const info = error as { runId?: string; cancelled?: boolean; status?: string };
     return {
