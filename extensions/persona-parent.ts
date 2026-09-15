@@ -13,7 +13,32 @@ import { waitForDelegationResponse, type DelegationWaitEventNames, type Launched
 
 let requestSequence = 0;
 
+/**
+ * Overall (non-sliding) cap for one delegation: per-call `responseTimeoutMs`
+ * or this default, clamped to [1s, 2^31-1]. The child run bound stays
+ * waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS. Cap expiry is distinct from the
+ * no-progress expiry: the error states whether the child was still making
+ * progress when the cap was reached.
+ */
 export const PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS = 600_000;
+
+/**
+ * Fast-fail bound for the bridge acceptance ack (the first matching
+ * started/update event). A miss means the bridge never accepted the attempt:
+ * the wait rejects with status "ack_timeout", the pre-launch attempt is
+ * cancelled, and retrying with the same runKey is safe (dedupe entries clear
+ * on rejection, so the retry launches a fresh attempt).
+ */
+export const PERSONA_DELEGATION_ACK_TIMEOUT_MS = 30_000;
+
+/**
+ * Sliding no-progress bound: every matching started/update event re-arms it,
+ * so a child that keeps reporting progress never trips it. On expiry the
+ * child is cancelled and the wait rejects with status "progress_timeout",
+ * carrying the last progress snapshot (currentTool, recent-output tail,
+ * toolCount, tokens, age). Ignored on bridges without the update event.
+ */
+export const PERSONA_DELEGATION_PROGRESS_TIMEOUT_MS = 120_000;
 /**
  * Child runs must terminal strictly before the parent gives up, so typed
  * bridge terminals (timed_out/cancelled) arrive instead of the parent's
@@ -46,7 +71,9 @@ function toolParameters(): Record<string, unknown> {
       action: { type: "string", enum: ["list", "doctor", "run"] },
       persona: { type: "string" },
       task: { type: "string" },
-      responseTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Per-call bound for this delegation: the parent wait and the child run deadline (default 600000)." },
+      responseTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Overall cap for this delegation: the parent wait and the child run deadline (default 600000). A child that stops reporting progress is cancelled sooner via progressTimeoutMs." },
+      ackTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Fail fast when the bridge does not acknowledge acceptance within this bound (default 30000). The launch never started, so retrying with the same runKey is safe." },
+      progressTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Cancel the child when no progress update arrives for this long (default 120000); the bound resets on every progress update." },
       runKey: { type: "string", description: "Idempotency key: re-running with the same runKey attaches to the in-flight child instead of launching a duplicate. Default: a digest of persona+task." },
       mode: { type: "string", enum: ["wait", "launch"], description: "launch returns a run handle (runId, runKey, cancel identity) as soon as the bridge accepts the attempt; wait (default) blocks for terminal completion and full attestation verification." },
     },
@@ -90,6 +117,16 @@ export function buildDelegationRequest(input: PersonaDelegationIdentity & { agen
 /** Parent wait bound for one delegation: per-call value, else the 600s default, clamped to [1s, 2^31-1]. */
 export function resolveWaitMs(responseTimeoutMs?: number): number {
   return Math.max(1_000, Math.min(responseTimeoutMs ?? PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS, 2_147_483_647));
+}
+
+/** Ack fast-fail bound for one delegation: per-call value, else the 30s default, clamped to [1s, 2^31-1]. */
+export function resolveAckTimeoutMs(ackTimeoutMs?: number): number {
+  return Math.max(1_000, Math.min(ackTimeoutMs ?? PERSONA_DELEGATION_ACK_TIMEOUT_MS, 2_147_483_647));
+}
+
+/** Sliding no-progress bound for one delegation: per-call value, else the 120s default, clamped to [1s, 2^31-1]. */
+export function resolveProgressTimeoutMs(progressTimeoutMs?: number): number {
+  return Math.max(1_000, Math.min(progressTimeoutMs ?? PERSONA_DELEGATION_PROGRESS_TIMEOUT_MS, 2_147_483_647));
 }
 
 /** Child run bound for the same delegation: strictly inside the parent wait so bridge terminals win the race. */
@@ -184,6 +221,8 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     delegationRequest,
     expectedLaunchContractDigest,
     waitMs,
+    ackTimeoutMs: resolveAckTimeoutMs(request.ackTimeoutMs),
+    progressTimeoutMs: resolveProgressTimeoutMs(request.progressTimeoutMs),
     onLaunched: (ack) => {
       launchedAcks.set(key, ack);
       request.onLaunched?.(ack);
@@ -238,7 +277,7 @@ export default function personaParentExtension(pi: any): void {
     label: "Persona Team",
     description: "List, diagnose, or run a canonical pi-persona-teams persona.",
     parameters: toolParameters(),
-    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch" }) {
+    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; ackTimeoutMs?: number; progressTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch" }) {
       if (params.action === "list") {
         const result = listPersonas(root);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
@@ -264,6 +303,8 @@ export default function personaParentExtension(pi: any): void {
         packageRoot: root,
         workspace: process.cwd(),
         ...(params.responseTimeoutMs !== undefined ? { responseTimeoutMs: params.responseTimeoutMs } : {}),
+        ...(params.ackTimeoutMs !== undefined ? { ackTimeoutMs: params.ackTimeoutMs } : {}),
+        ...(params.progressTimeoutMs !== undefined ? { progressTimeoutMs: params.progressTimeoutMs } : {}),
         ...(params.runKey !== undefined ? { idempotencyKey: params.runKey } : {}),
         ...(params.mode === "launch" ? { mode: "launch" as const } : {}),
         delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),

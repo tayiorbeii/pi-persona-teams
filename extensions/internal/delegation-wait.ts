@@ -14,6 +14,16 @@
  *   child terminals as `cancelled` instead of being orphaned.
  * - `…:response` is the single terminal event per attempt.
  *
+ * Liveness is tracked by three independent clocks: an ack bound
+ * (`ackTimeoutMs`) that fails fast when the first matching started/update
+ * event never arrives (the launch never started, so retrying with the same
+ * idempotency key is safe); a sliding no-progress bound
+ * (`progressTimeoutMs`) re-armed by every matching started/update event,
+ * whose error carries the last progress snapshot; and the non-sliding
+ * overall cap (`waitMs`), whose error distinguishes a cap reached while the
+ * child was still making progress from a stalled child. The ack and
+ * progress bounds arm only when the bridge exposes the update event.
+ *
  * Older bridges may not export the started/update/cancel event constants at
  * all; every optional event degrades gracefully when its name is missing.
  */
@@ -59,6 +69,22 @@ export interface DelegationWaitSuccess {
   output?: string;
 }
 
+/** Tail length kept for `recentOutput` in progress-timeout evidence. */
+const PROGRESS_OUTPUT_TAIL_CHARS = 2_000;
+
+/**
+ * Evidence from the most recent delegation update, attached to
+ * progress-timeout errors so callers can diagnose a stalled child.
+ */
+export interface DelegationProgressSnapshot {
+  currentTool?: string;
+  recentOutput?: string;
+  toolCount?: number;
+  tokens?: number;
+  /** Milliseconds between the last progress event and the bound firing. */
+  ageMs: number;
+}
+
 function enrichedError(message: string, identity: DelegationWaitIdentity, extra: Record<string, unknown>): Error {
   const error = new Error(message);
   Object.assign(error, { ...identity, ...extra });
@@ -72,15 +98,29 @@ export function waitForDelegationResponse(options: {
   delegationRequest: Record<string, unknown>;
   expectedLaunchContractDigest: string;
   waitMs: number;
+  /** Fast-fail bound for the bridge acceptance ack (the first matching started/update event). Ignored on bridges without the update event. */
+  ackTimeoutMs?: number;
+  /** Sliding no-progress bound re-armed by every matching started/update event. Ignored on bridges without the update event. */
+  progressTimeoutMs?: number;
   onLaunched?: (ack: LaunchedAck) => void;
 }): Promise<DelegationWaitSuccess> {
-  const { bus, eventNames, identity, delegationRequest, expectedLaunchContractDigest, waitMs, onLaunched } = options;
+  const { bus, eventNames, identity, delegationRequest, expectedLaunchContractDigest, waitMs, ackTimeoutMs, progressTimeoutMs, onLaunched } = options;
   const { requestId, ownerRunId, nodeId } = identity;
+  // Older bridges cannot report progress: without the update event neither
+  // new bound arms, preserving the historical cap-only behavior so a bridge
+  // that cannot signal progress is never fast-failed.
+  const progressSupported = typeof eventNames.update === "string" && eventNames.update.length > 0;
+  const ackBoundMs = progressSupported && typeof ackTimeoutMs === "number" && Number.isFinite(ackTimeoutMs) ? ackTimeoutMs : undefined;
+  const progressBoundMs = progressSupported && typeof progressTimeoutMs === "number" && Number.isFinite(progressTimeoutMs) ? progressTimeoutMs : undefined;
   return new Promise<DelegationWaitSuccess>((resolve, reject) => {
     let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let capTimer: ReturnType<typeof setTimeout> | undefined;
+    let ackTimer: ReturnType<typeof setTimeout> | undefined;
+    let progressTimer: ReturnType<typeof setTimeout> | undefined;
     let launchedNotified = false;
     let capturedRunId: string | undefined;
+    let lastSignalAt = 0;
+    let lastActivity: Omit<DelegationProgressSnapshot, "ageMs"> | undefined;
     const unsubscribes: Array<() => void> = [];
     const ack: LaunchedAck = {
       requestId,
@@ -124,17 +164,70 @@ export function waitForDelegationResponse(options: {
       unsubscribes.length = 0;
     };
 
+    const runIdTail = (): string =>
+      capturedRunId ? ` (child runId ${capturedRunId}; cancellation requested)` : " (child had not reported a runId yet)";
+    const clearWaitTimers = (): void => {
+      if (capTimer) clearTimeout(capTimer);
+      if (ackTimer) clearTimeout(ackTimer);
+      if (progressTimer) clearTimeout(progressTimer);
+    };
+    const giveUp = (error: Error): void => {
+      settled = true;
+      clearWaitTimers();
+      unwatchAll();
+      emitCancel();
+      reject(error);
+    };
+    const armProgressTimer = (boundMs: number): void => {
+      if (progressTimer) clearTimeout(progressTimer);
+      progressTimer = setTimeout(() => {
+        if (settled) return;
+        const lastActivitySnapshot: DelegationProgressSnapshot | undefined = lastActivity
+          ? { ...lastActivity, ageMs: Date.now() - lastSignalAt }
+          : undefined;
+        giveUp(enrichedError(`no progress from pi-subagents delegation for ${boundMs}ms${runIdTail()}`, identity, {
+          progressTimeoutMs: boundMs,
+          status: "progress_timeout",
+          cancelled: true,
+          ...(capturedRunId ? { runId: capturedRunId } : {}),
+          ...(lastActivitySnapshot ? { lastActivity: lastActivitySnapshot } : {}),
+        }));
+      }, boundMs);
+    };
+    // Every matching started/update event is a liveness signal: it clears
+    // the ack bound and re-arms the sliding no-progress bound.
+    const recordProgressSignal = (): void => {
+      lastSignalAt = Date.now();
+      if (ackTimer) {
+        clearTimeout(ackTimer);
+        ackTimer = undefined;
+      }
+      if (progressBoundMs !== undefined) armProgressTimer(progressBoundMs);
+    };
+
     watch(eventNames.started, (payload) => {
       if (settled) return;
-      if (matches(payload)) notifyLaunched();
+      if (matches(payload)) {
+        recordProgressSignal();
+        notifyLaunched();
+      }
     });
     watch(eventNames.update, (payload) => {
       if (settled || !matches(payload)) return;
+      recordProgressSignal();
       if (typeof payload?.runId === "string" && payload.runId) {
         capturedRunId = payload.runId;
         ack.runId = payload.runId;
         notifyLaunched();
       }
+      lastActivity = {
+        ...(typeof payload?.currentTool === "string" && payload.currentTool ? { currentTool: payload.currentTool } : {}),
+        ...(typeof payload?.recentOutput === "string" && payload.recentOutput
+          ? { recentOutput: payload.recentOutput.slice(-PROGRESS_OUTPUT_TAIL_CHARS) }
+          : {}),
+        ...(typeof payload?.toolCount === "number" ? { toolCount: payload.toolCount } : {}),
+        ...(typeof payload?.tokens === "number" ? { tokens: payload.tokens } : {}),
+      };
     });
     watch(eventNames.response, (payload) => {
       const response = payload as {
@@ -155,7 +248,7 @@ export function waitForDelegationResponse(options: {
       if (!invalidRequest && !matches(response)) return;
       if (settled) return;
       settled = true;
-      if (timer) clearTimeout(timer);
+      clearWaitTimers();
       unwatchAll();
       notifyLaunched();
       if (invalidRequest) {
@@ -189,23 +282,43 @@ export function waitForDelegationResponse(options: {
       });
     });
 
-    timer = setTimeout(() => {
+    lastSignalAt = Date.now();
+    if (progressBoundMs !== undefined) armProgressTimer(progressBoundMs);
+    if (ackBoundMs !== undefined) {
+      const bound = ackBoundMs;
+      ackTimer = setTimeout(() => {
+        if (settled) return;
+        giveUp(enrichedError(
+          `pi-subagents delegation was not acknowledged within ${bound}ms (ack bound): the launch never started, so retrying with the same runKey is safe`,
+          identity,
+          { ackTimeoutMs: bound, status: "ack_timeout", cancelled: true },
+        ));
+      }, bound);
+    }
+    capTimer = setTimeout(() => {
       if (settled) return;
-      settled = true;
-      unwatchAll();
-      emitCancel();
-      const runIdSuffix = capturedRunId ? ` (child runId ${capturedRunId}; cancellation requested)` : " (child had not reported a runId yet)";
-      reject(enrichedError(`timed out waiting for pi-subagents delegation response after ${waitMs}ms${runIdSuffix}`, identity, {
-        timeoutMs: waitMs,
-        cancelled: true,
-        ...(capturedRunId ? { runId: capturedRunId } : {}),
-      }));
+      // The cap is the only non-sliding clock: when it expires while the
+      // child was still reporting progress inside the no-progress bound,
+      // say so explicitly instead of blaming a stall.
+      const childProgressing = progressBoundMs !== undefined && lastSignalAt > 0 && Date.now() - lastSignalAt < progressBoundMs;
+      giveUp(enrichedError(
+        childProgressing
+          ? `timed out waiting for pi-subagents delegation response after ${waitMs}ms: overall cap reached while the child was still making progress${runIdTail()}`
+          : `timed out waiting for pi-subagents delegation response after ${waitMs}ms${runIdTail()}`,
+        identity,
+        {
+          timeoutMs: waitMs,
+          status: "timeout",
+          cancelled: true,
+          ...(capturedRunId ? { runId: capturedRunId } : {}),
+        },
+      ));
     }, waitMs);
 
     try {
       bus.emit(eventNames.request, delegationRequest);
     } catch (error) {
-      if (timer) clearTimeout(timer);
+      clearWaitTimers();
       unwatchAll();
       reject(error instanceof Error ? error : new Error(String(error)));
     }

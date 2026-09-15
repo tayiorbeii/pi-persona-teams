@@ -29,6 +29,10 @@ export interface DelegationRequest {
   acceptance?: unknown;
   /** Per-call bound for this delegation: parent wait and child run deadline (defaults to 600s). */
   responseTimeoutMs?: number;
+  /** Fast-fail bound for the bridge acceptance ack (defaults to 30s). */
+  ackTimeoutMs?: number;
+  /** Sliding no-progress bound reset by every progress update (defaults to 120s). */
+  progressTimeoutMs?: number;
   /** Idempotency key: an in-flight run with the same key is attached to instead of relaunched. */
   idempotencyKey?: string;
   /**
@@ -80,6 +84,10 @@ export interface PersonaFacadeOptions {
   delegate?: (request: DelegationRequest) => Promise<DelegationResult>;
   /** Per-call delegation bound forwarded to the delegate seam (defaults to 600s). */
   responseTimeoutMs?: number;
+  /** Fast-fail delegation ack bound forwarded to the delegate seam (defaults to 30s). */
+  ackTimeoutMs?: number;
+  /** Sliding no-progress delegation bound forwarded to the delegate seam (defaults to 120s). */
+  progressTimeoutMs?: number;
   /** Idempotency key forwarded to the delegate seam so identical in-flight runs dedupe. */
   idempotencyKey?: string;
   /** "launch" returns a run handle as soon as the bridge accepts the attempt; "wait" (default) blocks for terminal completion. */
@@ -271,6 +279,8 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
     task,
     context: "fresh",
     ...(options.responseTimeoutMs !== undefined ? { responseTimeoutMs: options.responseTimeoutMs } : {}),
+    ...(options.ackTimeoutMs !== undefined ? { ackTimeoutMs: options.ackTimeoutMs } : {}),
+    ...(options.progressTimeoutMs !== undefined ? { progressTimeoutMs: options.progressTimeoutMs } : {}),
     ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
     ...(resolveLaunched ? { onLaunched: (ack: LaunchedAck) => resolveLaunched!(ack) } : {}),
   });
