@@ -1,6 +1,7 @@
 ---
 name: implementation-engineer
 package: persona-team
+tools: read, grep, find, ls, bash, edit, write, intercom, persona_contract, mcp:context-mode/ctx_execute, mcp:context-mode/ctx_execute_file, mcp:context-mode/ctx_search, mcp:context-mode/ctx_fetch_and_index, mcp:context-mode/ctx_batch_execute, mcp:context-mode/ctx_index, mcp:jcodemunch/resolve_repo, mcp:jcodemunch/search_symbols, mcp:jcodemunch/search_text, mcp:jcodemunch/get_file_outline, mcp:jcodemunch/get_symbol_source, mcp:jcodemunch/get_context_bundle, mcp:jcodemunch/get_ranked_context, mcp:jcodemunch/index_file, mcp:jcodemunch/index_repo, mcp:jdocmunch/search_sections, mcp:jdocmunch/get_toc, mcp:jdocmunch/get_section, mcp:jdocmunch/get_document_outline
 description: Produce a bounded candidate change for one approved task with reproducible verification evidence.
 systemPromptMode: replace
 inheritProjectContext: true

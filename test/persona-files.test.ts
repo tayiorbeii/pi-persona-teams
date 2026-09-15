@@ -32,10 +32,17 @@ describe("independent persona files", () => {
     }
   });
 
-  test("every persona inherits normal Pi tools, extensions, skills, and project settings", () => {
+  test("every persona declares an explicit tool allowlist with persona_contract and MCP direct tools, and inherits extensions, skills, and project settings", () => {
     for (const role of Object.keys(expectedMethods)) {
       const source = readFileSync(join(root, "agents", `${role}.md`), "utf8");
-      expect(source, role).not.toMatch(/^tools:/m);
+      // pi-subagents only grants subagents direct MCP tools when `mcp:` entries are
+      // listed in the agent's `tools` allowlist; the allowlist must also keep the
+      // persona-child extension's persona_contract tool. (See pi-subagents README
+      // "Tool and extension selection".)
+      expect(source, role).toMatch(/^tools: .*persona_contract/m);
+      expect(source, role).toMatch(/^tools: .*mcp:context-mode\/ctx_execute/m);
+      expect(source, role).toMatch(/^tools: .*mcp:jcodemunch\/search_symbols/m);
+      expect(source, role).toMatch(/^tools: .*mcp:jdocmunch\/search_sections/m);
       expect(source, role).not.toMatch(/^extensions:/m);
       expect(source, role).toContain("inheritProjectContext: true");
       expect(source, role).toContain("inheritSkills: true");
