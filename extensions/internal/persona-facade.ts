@@ -3,6 +3,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { resolvePersonaPath, validatePersonaFile, type PersonaFile } from "./persona-file.ts";
 import { verifyAttestation, readAttestation, type PersonaAttestation } from "./attestation.ts";
 import { providerDoctor, type ProviderObservation, type ProviderToolDescriptor } from "./provider-observer.ts";
+import type { LaunchedAck } from "./delegation-wait.ts";
 
 export interface PersonaSummary {
   runtimeName: string;
@@ -26,6 +27,13 @@ export interface DelegationRequest {
   task: string;
   context: "fresh";
   acceptance?: unknown;
+  /**
+   * Invoked once when the bridge accepts the attempt (started event) or the
+   * first progress update carries the child runId — always before terminal
+   * completion. The ack's `runId` field is live and fills in as soon as the
+   * bridge reports it; `cancel()` asks the bridge to abort the child.
+   */
+  onLaunched?: (ack: LaunchedAck) => void;
 }
 
 export interface DelegationResult {
@@ -48,6 +56,10 @@ export interface PersonaRunResult {
   ordinaryAccepted: boolean;
   personaAccepted: boolean;
   delegated: boolean;
+  /** Child pi-subagents run id, surfaced as early as the bridge reports it (including on timeout/failure). */
+  runId?: string;
+  /** True when the parent gave up waiting and asked the bridge to cancel the child. */
+  timedOut?: boolean;
 }
 
 export interface PersonaFacadeOptions {
@@ -213,7 +225,17 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   try {
     delegated = await options.delegate({ agent: runtimeName, task, context: "fresh" });
   } catch (error) {
-    return { accepted: false, runtimeName, errors: [`pi-subagents delegation failed: ${error instanceof Error ? error.message : String(error)}`], ordinaryAccepted: false, personaAccepted: false, delegated: true };
+    const info = error as { runId?: string; cancelled?: boolean; status?: string };
+    return {
+      accepted: false,
+      runtimeName,
+      errors: [`pi-subagents delegation failed: ${error instanceof Error ? error.message : String(error)}`],
+      ordinaryAccepted: false,
+      personaAccepted: false,
+      delegated: true,
+      ...(info.runId ? { runId: info.runId } : {}),
+      ...(info.cancelled ? { timedOut: true } : {}),
+    };
   }
   let attestation: PersonaAttestation | undefined;
   try {

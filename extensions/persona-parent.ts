@@ -8,6 +8,7 @@ import {
   type DelegationRequest,
   type DelegationResult,
 } from "./internal/persona-facade.ts";
+import { waitForDelegationResponse, type DelegationWaitEventNames } from "./internal/delegation-wait.ts";
 
 let requestSequence = 0;
 
@@ -102,6 +103,11 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
   const delegation = await import(delegationName) as {
     SUBAGENT_DELEGATION_REQUEST_EVENT: string;
     SUBAGENT_DELEGATION_RESPONSE_EVENT: string;
+    // Older bridges do not export these constants; every usage degrades
+    // gracefully when they are missing.
+    SUBAGENT_DELEGATION_STARTED_EVENT?: string;
+    SUBAGENT_DELEGATION_UPDATE_EVENT?: string;
+    SUBAGENT_DELEGATION_CANCEL_EVENT?: string;
   };
   if (!pi.events || typeof pi.events.on !== "function" || typeof pi.events.emit !== "function") {
     throw new Error("Pi extension event bus is unavailable for pi-subagents delegation");
@@ -120,63 +126,29 @@ async function delegateThroughPiSubagents(pi: any, workspace: string, request: D
     workspace,
   });
 
-  return await new Promise<DelegationResult>((resolveResult, reject) => {
-    let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = pi.events.on(delegation.SUBAGENT_DELEGATION_RESPONSE_EVENT, (payload: unknown) => {
-      const response = payload as {
-        requestId?: string;
-        ownerRunId?: string;
-        nodeId?: string;
-        status?: string;
-        error?: string;
-        runId?: string;
-        launchContractDigest?: string;
-        result?: { kind?: string; text?: string; value?: unknown };
-      };
-      if (response.requestId !== requestId || response.ownerRunId !== ownerRunId || response.nodeId !== nodeId || settled) return;
-      settled = true;
-      if (timer) clearTimeout(timer);
-      if (typeof unsubscribe === "function") unsubscribe();
-      if (response.status !== "completed") {
-        reject(new Error(`pi-subagents delegation ${response.status ?? "failed"}: ${response.error ?? "no terminal response"}`));
-        return;
-      }
-      if (!response.runId) {
-        reject(new Error("pi-subagents delegation completed without a child run ID"));
-        return;
-      }
-      if (!response.launchContractDigest) {
-        reject(new Error("pi-subagents delegation completed without launchContractDigest evidence"));
-        return;
-      }
-      if (response.launchContractDigest !== expectedLaunchContractDigest) {
-        reject(new Error("pi-subagents delegation launchContractDigest does not match the immutable preflight contract"));
-        return;
-      }
-      const output = response.result?.kind === "text" ? response.result.text : response.result?.value === undefined ? undefined : JSON.stringify(response.result.value);
-      resolveResult({
-        output,
-        runId: response.runId,
-        ordinaryAccepted: false,
-        ordinaryAcceptanceReason: "terminal completion is not ordinary acceptance evidence",
-        launchContractDigest: response.launchContractDigest,
-      });
-    });
-    timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      if (typeof unsubscribe === "function") unsubscribe();
-      reject(new Error("timed out waiting for pi-subagents delegation response"));
-    }, PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS);
-    try {
-      pi.events.emit(delegation.SUBAGENT_DELEGATION_REQUEST_EVENT, delegationRequest);
-    } catch (error) {
-      if (timer) clearTimeout(timer);
-      if (typeof unsubscribe === "function") unsubscribe();
-      reject(error);
-    }
-  });
+  const eventNames: DelegationWaitEventNames = {
+    request: delegation.SUBAGENT_DELEGATION_REQUEST_EVENT,
+    response: delegation.SUBAGENT_DELEGATION_RESPONSE_EVENT,
+    ...(typeof delegation.SUBAGENT_DELEGATION_STARTED_EVENT === "string" ? { started: delegation.SUBAGENT_DELEGATION_STARTED_EVENT } : {}),
+    ...(typeof delegation.SUBAGENT_DELEGATION_UPDATE_EVENT === "string" ? { update: delegation.SUBAGENT_DELEGATION_UPDATE_EVENT } : {}),
+    ...(typeof delegation.SUBAGENT_DELEGATION_CANCEL_EVENT === "string" ? { cancel: delegation.SUBAGENT_DELEGATION_CANCEL_EVENT } : {}),
+  };
+
+  return waitForDelegationResponse({
+    bus: pi.events,
+    eventNames,
+    identity: { requestId, ownerRunId, nodeId },
+    delegationRequest,
+    expectedLaunchContractDigest,
+    waitMs: PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS,
+    ...(request.onLaunched ? { onLaunched: request.onLaunched } : {}),
+  }).then((success) => ({
+    output: success.output,
+    runId: success.runId,
+    ordinaryAccepted: false as const,
+    ordinaryAcceptanceReason: "terminal completion is not ordinary acceptance evidence",
+    launchContractDigest: success.launchContractDigest,
+  }));
 }
 
 export default function personaParentExtension(pi: any): void {
