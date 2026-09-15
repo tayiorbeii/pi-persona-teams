@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { personaDoctor, runPersona } from "../extensions/internal/persona-facade.ts";
+import { personaDoctor, runPersona, type DelegationRequest, type DelegationResult } from "../extensions/internal/persona-facade.ts";
 import { PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS } from "../extensions/persona-parent.ts";
 
 const root = join(import.meta.dir, "..");
@@ -92,5 +92,76 @@ describe("adversarial parent verification", () => {
     });
 
     expect(result.deficiencies.filter((item) => item.includes("not discoverable through pi-subagents"))).toEqual([]);
+  });
+});
+
+describe("launch mode run handle", () => {
+  test("returns a run handle at bridge acceptance instead of blocking for terminal completion", async () => {
+    let captured: DelegationRequest | undefined;
+    let resolveDelegate: (value: DelegationResult) => void = () => {};
+    const delegate = (request: DelegationRequest) => {
+      captured = request;
+      return new Promise<DelegationResult>((resolve) => { resolveDelegate = resolve; });
+    };
+
+    const pending = runPersona({
+      packageRoot: root,
+      workspace: root,
+      mode: "launch",
+      idempotencyKey: "launch-key",
+      delegate,
+    }, "persona-team.engineering-manager", "Produce a bounded plan.");
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 1));
+
+    expect(captured?.onLaunched).toBeInstanceOf(Function);
+    expect(captured?.idempotencyKey).toBe("launch-key");
+    captured?.onLaunched?.({
+      requestId: "persona-req-1",
+      ownerRunId: "persona-parent-persona-req-1",
+      nodeId: "persona-team:persona-team.engineering-manager:launch-key",
+      runId: "child-run-launch",
+      cancel: () => {},
+    });
+
+    const result = await pending;
+    expect(result.delegated).toBe(true);
+    expect(result.accepted).toBe(false);
+    expect(result.status).toBe("launched");
+    expect(result.errors).toEqual([]);
+    expect(result.runId).toBe("child-run-launch");
+    expect(result.runKey).toBe("launch-key");
+    expect(result.requestId).toBe("persona-req-1");
+    expect(result.nodeId).toBe("persona-team:persona-team.engineering-manager:launch-key");
+
+    resolveDelegate({ runId: "child-run-launch", ordinaryAccepted: false });
+  });
+
+  test("fails the launch when no acceptance ack arrives within the ack deadline", async () => {
+    const result = await runPersona({
+      packageRoot: root,
+      workspace: root,
+      mode: "launch",
+      idempotencyKey: "stuck-key",
+      launchAckTimeoutMs: 20,
+      delegate: () => new Promise<DelegationResult>(() => {}),
+    }, "persona-team.engineering-manager", "Produce a bounded plan.");
+
+    expect(result.status).toBe("failed");
+    expect(result.delegated).toBe(true);
+    expect(result.runKey).toBe("stuck-key");
+    expect(result.errors[0]).toContain("persona launch ack not received within 20ms");
+  });
+
+  test("a pre-ack delegate failure fails the launch instead of waiting for an ack", async () => {
+    const result = await runPersona({
+      packageRoot: root,
+      workspace: root,
+      mode: "launch",
+      launchAckTimeoutMs: 5_000,
+      delegate: async () => { throw new Error("persona launch preflight failed"); },
+    }, "persona-team.engineering-manager", "Produce a bounded plan.");
+
+    expect(result.status).toBe("failed");
+    expect(result.errors[0]).toContain("pi-subagents delegation failed: persona launch preflight failed");
   });
 });

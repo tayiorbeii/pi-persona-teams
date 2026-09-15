@@ -48,6 +48,7 @@ function toolParameters(): Record<string, unknown> {
       task: { type: "string" },
       responseTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Per-call bound for this delegation: the parent wait and the child run deadline (default 600000)." },
       runKey: { type: "string", description: "Idempotency key: re-running with the same runKey attaches to the in-flight child instead of launching a duplicate. Default: a digest of persona+task." },
+      mode: { type: "string", enum: ["wait", "launch"], description: "launch returns a run handle (runId, runKey, cancel identity) as soon as the bridge accepts the attempt; wait (default) blocks for terminal completion and full attestation verification." },
     },
     required: ["action"],
   };
@@ -237,7 +238,7 @@ export default function personaParentExtension(pi: any): void {
     label: "Persona Team",
     description: "List, diagnose, or run a canonical pi-persona-teams persona.",
     parameters: toolParameters(),
-    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; runKey?: string }) {
+    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch" }) {
       if (params.action === "list") {
         const result = listPersonas(root);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
@@ -264,6 +265,7 @@ export default function personaParentExtension(pi: any): void {
         workspace: process.cwd(),
         ...(params.responseTimeoutMs !== undefined ? { responseTimeoutMs: params.responseTimeoutMs } : {}),
         ...(params.runKey !== undefined ? { idempotencyKey: params.runKey } : {}),
+        ...(params.mode === "launch" ? { mode: "launch" as const } : {}),
         delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };

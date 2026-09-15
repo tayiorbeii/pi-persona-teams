@@ -64,6 +64,13 @@ export interface PersonaRunResult {
   runId?: string;
   /** True when the parent gave up waiting and asked the bridge to cancel the child. */
   timedOut?: boolean;
+  /** Launch-mode lifecycle: "launched" means a run handle was returned before terminal completion. */
+  status?: "launched" | "completed" | "failed";
+  /** The idempotency key backing this run; pass it as runKey to attach to the same child. */
+  runKey?: string;
+  /** Bridge attempt identity triple for the launched child (launch mode). */
+  requestId?: string;
+  nodeId?: string;
 }
 
 export interface PersonaFacadeOptions {
@@ -75,6 +82,10 @@ export interface PersonaFacadeOptions {
   responseTimeoutMs?: number;
   /** Idempotency key forwarded to the delegate seam so identical in-flight runs dedupe. */
   idempotencyKey?: string;
+  /** "launch" returns a run handle as soon as the bridge accepts the attempt; "wait" (default) blocks for terminal completion. */
+  mode?: "wait" | "launch";
+  /** How long launch mode waits for the bridge acceptance ack before failing. */
+  launchAckTimeoutMs?: number;
   toolNames?: string[];
   environment?: Record<string, string | undefined>;
   toolDescriptors?: ProviderToolDescriptor[];
@@ -221,6 +232,25 @@ function findAttestation(options: PersonaFacadeOptions, runtimeName: string, run
   return undefined;
 }
 
+/** How long launch mode waits for the bridge acceptance ack before failing. */
+export const PERSONA_LAUNCH_ACK_TIMEOUT_MS = 30_000;
+
+function delegationFailureResult(runtimeName: string, error: unknown, extra: { status?: "failed"; runKey?: string } = {}): PersonaRunResult {
+  const info = error as { runId?: string; cancelled?: boolean; status?: string };
+  return {
+    accepted: false,
+    runtimeName,
+    errors: [`pi-subagents delegation failed: ${error instanceof Error ? error.message : String(error)}`],
+    ordinaryAccepted: false,
+    personaAccepted: false,
+    delegated: true,
+    ...(extra.status ? { status: extra.status } : {}),
+    ...(extra.runKey !== undefined ? { runKey: extra.runKey } : {}),
+    ...(info.runId ? { runId: info.runId } : {}),
+    ...(info.cancelled ? { timedOut: true } : {}),
+  };
+}
+
 export async function runPersona(options: PersonaFacadeOptions, runtimeName: string, task: string): Promise<PersonaRunResult> {
   const selected = selectedPersona(options, runtimeName);
   if (!selected.result.valid || !selected.persona) {
@@ -229,27 +259,59 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   if (!options.delegate) {
     return { accepted: false, runtimeName, errors: ["persona facade requires the supported pi-subagents delegation seam; no custom launcher is available"], ordinaryAccepted: false, personaAccepted: false, delegated: false };
   }
+  const launchMode = options.mode === "launch";
+  let resolveLaunched: ((ack: LaunchedAck) => void) | undefined;
+  let rejectLaunched: ((error: unknown) => void) | undefined;
+  const launchedPromise = launchMode
+    ? new Promise<LaunchedAck>((resolve, reject) => { resolveLaunched = resolve; rejectLaunched = reject; })
+    : undefined;
+
+  const delegatedPromise = options.delegate({
+    agent: runtimeName,
+    task,
+    context: "fresh",
+    ...(options.responseTimeoutMs !== undefined ? { responseTimeoutMs: options.responseTimeoutMs } : {}),
+    ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    ...(resolveLaunched ? { onLaunched: (ack: LaunchedAck) => resolveLaunched!(ack) } : {}),
+  });
+  // A pre-ack failure (e.g., preflight) must not leave launch mode waiting
+  // for an acceptance ack that can never arrive.
+  void delegatedPromise.catch((error) => rejectLaunched?.(error));
+
+  if (launchedPromise) {
+    const ackTimeoutMs = options.launchAckTimeoutMs ?? PERSONA_LAUNCH_ACK_TIMEOUT_MS;
+    try {
+      const ack = await new Promise<LaunchedAck>((resolveAck, rejectAck) => {
+        const timer = setTimeout(() => rejectAck(new Error(`persona launch ack not received within ${ackTimeoutMs}ms`)), ackTimeoutMs);
+        launchedPromise.then(
+          (value) => { clearTimeout(timer); resolveAck(value); },
+          (error) => { clearTimeout(timer); rejectAck(error instanceof Error ? error : new Error(String(error))); },
+        );
+      });
+      return {
+        accepted: false,
+        runtimeName,
+        errors: [],
+        ordinaryAccepted: false,
+        personaAccepted: false,
+        delegated: true,
+        status: "launched",
+        runKey: options.idempotencyKey,
+        requestId: ack.requestId,
+        nodeId: ack.nodeId,
+        ...(ack.runId !== undefined ? { runId: ack.runId } : {}),
+      };
+    } catch (error) {
+      void delegatedPromise.catch(() => {});
+      return delegationFailureResult(runtimeName, error, { status: "failed", runKey: options.idempotencyKey });
+    }
+  }
+
   let delegated: DelegationResult;
   try {
-    delegated = await options.delegate({
-      agent: runtimeName,
-      task,
-      context: "fresh",
-      ...(options.responseTimeoutMs !== undefined ? { responseTimeoutMs: options.responseTimeoutMs } : {}),
-      ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
-    });
+    delegated = await delegatedPromise;
   } catch (error) {
-    const info = error as { runId?: string; cancelled?: boolean; status?: string };
-    return {
-      accepted: false,
-      runtimeName,
-      errors: [`pi-subagents delegation failed: ${error instanceof Error ? error.message : String(error)}`],
-      ordinaryAccepted: false,
-      personaAccepted: false,
-      delegated: true,
-      ...(info.runId ? { runId: info.runId } : {}),
-      ...(info.cancelled ? { timedOut: true } : {}),
-    };
+    return delegationFailureResult(runtimeName, error);
   }
   let attestation: PersonaAttestation | undefined;
   try {

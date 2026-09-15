@@ -1,7 +1,10 @@
 import { describe, expect, mock, test } from "bun:test";
+import { join } from "node:path";
 import { delegateThroughPiSubagents, idempotencyKeyFor } from "../extensions/persona-parent.ts";
-import type { DelegationRequest, DelegationResult } from "../extensions/internal/persona-facade.ts";
+import { runPersona, type DelegationRequest, type DelegationResult } from "../extensions/internal/persona-facade.ts";
 import type { LaunchedAck } from "../extensions/internal/delegation-wait.ts";
+
+const root = join(import.meta.dir, "..");
 
 const REQUEST_EVENT = "test:persona:request";
 const RESPONSE_EVENT = "test:persona:response";
@@ -144,5 +147,41 @@ describe("delegation idempotency", () => {
     settleCompleted(bus, secondEmitted.requestId, secondEmitted.nodeId, "child-run-second");
     const result = await second;
     expect(result.runId).toBe("child-run-second");
+  });
+
+  test("runPersona launch mode returns a handle and a later wait attaches to the same child", async () => {
+    const bus = new FakeDelegationBus();
+    const delegate = (request: DelegationRequest) => delegateThroughPiSubagents(fakePi(bus), root, request);
+
+    const launch = runPersona({
+      packageRoot: root,
+      workspace: root,
+      mode: "launch",
+      idempotencyKey: "e2e-launch",
+      delegate,
+    }, "persona-team.qa-lead", "e2e launch task");
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 1));
+    const emitted = bus.requests()[0];
+    bus.emit(STARTED_EVENT, { requestId: emitted.requestId, ownerRunId: emitted.ownerRunId, nodeId: emitted.nodeId });
+
+    const launched = await launch;
+    expect(launched.status).toBe("launched");
+    expect(launched.runKey).toBe("e2e-launch");
+    expect(launched.requestId).toBe(emitted.requestId);
+
+    const wait = runPersona({
+      packageRoot: root,
+      workspace: root,
+      idempotencyKey: "e2e-launch",
+      delegate,
+    }, "persona-team.qa-lead", "a different task text still attaches via runKey");
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 1));
+    expect(bus.requests().length).toBe(1);
+
+    bus.emit(UPDATE_EVENT, { requestId: emitted.requestId, ownerRunId: emitted.ownerRunId, nodeId: emitted.nodeId, runId: "child-run-e2e" });
+    settleCompleted(bus, emitted.requestId, emitted.nodeId, "child-run-e2e");
+    const waitResult = await wait;
+    expect(waitResult.delegated).toBe(true);
+    expect(waitResult.output).toBe("output-child-run-e2e");
   });
 });
