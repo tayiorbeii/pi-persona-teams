@@ -236,6 +236,17 @@ export default function personaChildExtension(pi: any): void {
     parameters: toolParameters(),
     async execute(_toolCallId: string, params: PersonaChildAction) {
       if (startupError || !runtime) return { content: [{ type: "text", text: `Persona admission failed: ${startupError ?? "unknown startup error"}` }], details: { ok: false, message: startupError ?? "unknown startup error" } };
+      // Re-probe the runtime tool registry on demand. MCP direct tools (context-mode,
+      // jcodemunch, jdocmunch) are registered asynchronously after session_start, so the
+      // initial provider observations can be stale — providers were reported unavailable
+      // even though the tools were present in the child. Refreshing here keeps the
+      // visibility gate and provider routing truthful without depending on registration
+      // timing.
+      if (typeof pi.getAllTools === "function") {
+        const liveTools: ProviderToolDescriptor[] = pi.getAllTools().map((tool: ProviderToolDescriptor) => ({ name: tool.name, description: tool.description, source: tool.source, provenance: tool.provenance }));
+        const liveNames = liveTools.flatMap((tool) => tool.name ? [tool.name] : []);
+        runtime.reprobeProviders(liveNames, liveTools);
+      }
       const result = runtime.handle(params);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
     },
