@@ -12,6 +12,10 @@
 - Added `mode: "launch"` to `run`, returning a run handle (`status`, `runId`, `runKey`, attempt identity) as soon as the bridge accepts the attempt; a later `wait` call with the same `runKey` attaches to the same child for the terminal result and attestation verification.
 - Older pi-subagents bridges without `started`/`update`/`cancel` delegation events degrade gracefully (launch acks come from terminal responses, and timeouts stop emitting cancels).
 
+### Orchestration guidance
+
+- Documented safe-by-default persona orchestration in [`skills/persona-team/SKILL.md`](./skills/persona-team/SKILL.md) and the README: fire-and-check reviewer launches (`mode: "launch"` plus `runKey` attach), role-scoped `responseTimeoutMs` guidance (300000-420000 for read-only review, 420000-600000 for implementation-engineer), a capability preflight via `list`/`doctor` before assignment (browser, dev-server, and network work stays with the parent — no persona allowlist has it), and an after-timeout check-attach protocol that uses the surfaced child `runId` instead of blind retries.
+
 ### Official pi-subagents integration
 
 - Switched the compatibility floor to official `pi-subagents` 0.51 and documented merged PR #1251; official `main` is required until the post-merge npm release.
