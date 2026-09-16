@@ -9,7 +9,7 @@ G0 Baseline + authority audit
   -> G1 Pi discovery contract + package schema
   -> G2 License/provenance and both families' support recovery
   -> G3 Manifest schema + deterministic resolver fixtures
-  -> G4 Vendor byte-preserving content and closure files
+  -> G4 Import methodology and adapt gstack skills to Pi
   -> G5 Manifest generation and integrity verifier
   -> G6 Manifest/package declarations and package gates
   -> G7 Installed closure + Pi discovery integration tests
@@ -34,7 +34,7 @@ G0 Baseline + authority audit
 ## G2 — Resolve redistribution and local closure prerequisites
 
 - Verify upstream `LICENSE`, README/import scripts, per-file metadata, Wondel MIT notice, and gstack/Garry Tan MIT notice. Check whether the package `LICENSE` is sufficient; otherwise add `NOTICE` and publish it via `package.json#files`.
-- Use explicit pinned Wondel and gstack source roots/commits to inventory and recover static supporting documents from both families. Include references in prose/code, not just Markdown links; gstack review checklists, `TODOS-format.md`, and specialist documents are examples. Preserve true relative topology, define logical origin-to-package mappings for authored host paths, deterministic duplicate handling, and hash every physical support file. Executables/state/runtime shims remain excluded; unchanged host-path assumptions remain documented external compatibility requirements.
+- Inventory relevant static documents from both pinned origins, including paths in prose/code. Recover methodology, checklists, and specialist guidance; adapt supporting instructions and paths to Pi/package-relative links. Exclude gstack executables/state/runtime shims. Record each skill's portable purpose, existing Pi capability mapping, and bounded parent handoff for unavailable capabilities; no original host-path setup may remain a runtime requirement.
 - Fail this gate if exact support files or required licensing text are unavailable; do not invent content or ship an untestable partial catalog.
 
 ## G3 — Define testable on-disk contract
@@ -42,12 +42,12 @@ G0 Baseline + authority audit
 - Add `skills/vendor-manifest.json` schema covering aggregate checkout provenance (`paperclip-factory-kit`, path, `86038...`), origin provenance (Wondel/gstack repo/path/commit), license/attribution, destination, source/package byte counts and hashes, runtime classification, and closure status.
 - Define deterministic order (existing `./skills/persona-team`, then the 42 Wondel slugs, then 44 gstack slugs; verify against the final inventory), exact inventory boundaries, and support-file entries.
 - Define a Markdown resolver for actual links/images (and only explicitly supported syntax): ignore code blocks/inline code, anchors/fragments/query, and external schemes; recursively resolve local targets; reject traversal, package-root escape, and symlink escape. Add fixtures for fragments, external links, escapes, missing targets, and transitive links. Separately audit static-document references in prose/code and record explicit support mappings and host-runtime exclusions.
-- Define deterministic `scripts/import-vendored-skills.ts`: verify explicit aggregate/origin repository identities and pins, generate sorted inventory/support mappings/hashes and registrations, preserve persona-team, and produce zero diff on an identical rerun. Use existing Node/Bun APIs and no changing timestamps or absolute temporary paths in outputs.
+- Define deterministic `scripts/import-vendored-skills.ts` and checked-in reviewed compatibility patches under `scripts/skill-adaptations/`: verify pinned source identities/bytes, apply patches with exact context checks, record separate original/adapted hashes and adaptation version, generate sorted inventory and registrations, preserve persona-team, and produce zero diff for identical inputs. No dependencies, changing timestamps, or temporary paths.
 
 ## G4 — Vendor content
 
-- Copy each upstream `SKILL.md` byte-for-byte to `skills/<slug>/SKILL.md`.
-- Add only exact recovered Wondel and gstack static support files at paths preserving original relative links or documented logical asset mappings. Do not rewrite cross-skill prose, external URLs, `/gstack-*` references, frontmatter, or gstack runtime instructions. Use the deterministic importer from G3.
+- Import all 86 skill identities. Preserve portable Wondel content; adapt all 44 gstack skills and relevant supporting documents through G3's reviewed patches. Preserve methodology, criteria, and attribution; replace active tool-specific instructions with existing Pi operations within persona authority, relative document links, and discovered-skill references. Remove gstack setup, binaries, daemons, telemetry, state conventions, host paths, and Claude-only APIs. Raw gstack instructions must not enter active discovery.
+- Independently review adaptations for retained purpose, meaningful Pi execution, and no new authority. Tool-centric skills provide supported analysis/operations and bounded parent handoff for capabilities the persona lacks; they never install gstack or invent replacement tools.
 - Do not add gstack helper binaries, `.gstack` state, Claude runtime shims, or ambient skills `octocode-research`, `ponytail`, `i-have-adhd`.
 
 ## G5 — Integrity and provenance implementation
@@ -65,19 +65,20 @@ G0 Baseline + authority audit
 ## G7 — Installed closure and discovery
 
 - Extend `test/package-install.test.ts` to install a real `.tgz`, parse installed `package.json`, resolve every `pi.skills` entry inside the installed package, verify every `SKILL.md` and manifest support file, and retain uninstall/collateral assertions.
-- Add `test/skill-reference-closure.test.ts` against the real packed/install tree. Recursively validate local references with the G3 resolver, verify both families' manifest-listed static support mappings, and classify gstack host-runtime references as external requirements. Do not claim packaged assets satisfy unchanged host paths. Ordinary tests require neither temporary source clones nor network retrieval.
+- Add `test/skill-reference-closure.test.ts` against the installed tree and fixtures for compatibility patches. Verify local references and original/adapted hashes; fail on residual active gstack helper/setup/state/daemon/host-path or Claude-only API requirements. Ordinary tests require no source clones/network. Independent content review supplements residual-dependency checks.
 - Add the G1 discovery integration/fixture test if existing Pi tooling supports it; otherwise keep the release-blocking evidence requirement explicit.
 
 ## G8 — Preserve persona boundary and policy
 
 - Extend `test/persona-files.test.ts` and/or verifier-negative tests to assert all ten personas remain independently valid, retain `inheritSkills: true`, have no `skillPath`, and contain unchanged required inline methods/body hashes and policy invariants.
 - Keep `skills/<vendor>` out of required-method resolution; prove no persona references it as a method source.
+- Exercise a bounded persona applying a representative adapted gstack review skill with gstack absent; confirm inherited discovery, useful review evidence, unchanged role policy, and bounded parent handoff when a capability is unavailable. Do not turn optional skills into new mandatory methods.
 - Update `scripts/verify-no-shared-corpus.ts` and `test/verifier-negative.test.ts` only as needed to allow standalone vendor skills while continuing to reject shared/generated corpus and external method loading.
 
 ## G9 — Drift, documentation, and provenance record
 
 - Add `test/vendor-provenance-and-drift.test.ts` for unchanged/added/changed/removed/bad-hash/wrong-path/wrong-commit/unpinned/missing-root cases. Source-root failures belong to source comparison tests. Prove offline integrity without clones and import rerun idempotence.
-- Update `README.md`, `docs/compatibility.md`, the appropriate authoring/architecture doc, and `CHANGELOG.md` with catalog counts, source pins, discovery behavior, manifest/import/update commands, both families' support closure and logical mappings, gstack external-runtime limitation, and ambient-skill non-dependency rule. Keep unrelated documentation repairs outside this change.
+- Document source pins, catalog counts, persona inheritance, Pi capability mappings, recorded adaptations, supporting links, original/adapted verification, and update commands. Explicitly state that no gstack installation/tooling is required. Keep unrelated repairs outside this change.
 - Update `LICENSE` or add `NOTICE` only after G2 verification; include it in the package file list.
 
 ## G10 — Release-readiness checks
@@ -86,4 +87,4 @@ Run, in order: deterministic import rerun (zero diff); pinned-source comparison 
 
 ## Change-set boundaries
 
-Expected implementation files: `package.json`; `skills/vendor-manifest.json`; 86 vendored skill directories plus exact supporting documents from both families; `scripts/import-vendored-skills.ts`; `scripts/verify-vendored-skills.ts`; drift/source comparison script (harden or dedicated skill script); `test/package-gates.test.ts`; `test/package-install.test.ts`; new closure/provenance/discovery tests; persona/verifier tests only for boundary assertions; README/docs/license/notice/changelog. No persona method corpus, runtime shim, dependency, generated runtime artifact, or unrelated file.
+Expected implementation files: `package.json`; `skills/vendor-manifest.json`; 86 skills plus relevant supporting documents; `scripts/import-vendored-skills.ts`; reviewed patches in `scripts/skill-adaptations/`; `scripts/verify-vendored-skills.ts`; drift/source comparison script; package install/gate tests; closure/provenance/discovery/adaptation tests; persona integration/policy tests; README/docs/license/notice/changelog. No gstack tooling, shared persona-method corpus, runtime shim, dependency, generated runtime artifact, or unrelated file.
