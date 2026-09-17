@@ -33,6 +33,8 @@ export interface DelegationRequest {
   ackTimeoutMs?: number;
   /** Sliding no-progress bound reset by every progress update (defaults to 120s). */
   progressTimeoutMs?: number;
+  /** Verification policy; advisory is the default for persona_team. */
+  verificationPolicy?: "advisory" | "strict";
   /** Idempotency key: an in-flight run with the same key is attached to instead of relaunched. */
   idempotencyKey?: string;
   /**
@@ -49,6 +51,8 @@ export interface DelegationResult {
   runId: string;
   childIndex?: number;
   launchContractDigest?: string;
+  warnings?: string[];
+  executionStatus?: "completed";
   attestation?: PersonaAttestation;
   attestationPath?: string;
   ordinaryAccepted?: boolean;
@@ -72,6 +76,8 @@ export interface PersonaRunResult {
   timedOut?: boolean;
   /** Launch-mode lifecycle: "launched" means a run handle was returned before terminal completion. */
   status?: "launched" | "completed" | "failed";
+  executionStatus?: "completed";
+  warnings?: string[];
   /** The idempotency key backing this run; pass it as runKey to attach to the same child. */
   runKey?: string;
   /** Bridge attempt identity triple for the launched child (launch mode). */
@@ -94,6 +100,8 @@ export interface PersonaFacadeOptions {
   idempotencyKey?: string;
   /** "launch" returns a run handle as soon as the bridge accepts the attempt; "wait" (default) blocks for terminal completion. */
   mode?: "wait" | "launch";
+  /** Verification policy; advisory is the default for persona_team. */
+  verificationPolicy?: "advisory" | "strict";
   /** How long launch mode waits for the bridge acceptance ack before failing. */
   launchAckTimeoutMs?: number;
   toolNames?: string[];
@@ -258,7 +266,7 @@ function delegationFailureResult(runtimeName: string, error: unknown, extra: { s
     ordinaryAccepted: false,
     personaAccepted: false,
     delegated: true,
-    ...(extra.status ? { status: extra.status } : {}),
+    status: extra.status ?? "failed",
     ...(extra.runKey !== undefined ? { runKey: extra.runKey } : {}),
     ...(info.runId ? { runId: info.runId } : {}),
     ...(info.cancelled ? { timedOut: true } : {}),
@@ -308,6 +316,7 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
     ...(options.ackTimeoutMs !== undefined ? { ackTimeoutMs: options.ackTimeoutMs } : {}),
     ...(options.progressTimeoutMs !== undefined ? { progressTimeoutMs: options.progressTimeoutMs } : {}),
     ...(options.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    verificationPolicy: options.verificationPolicy ?? "advisory",
     ...(resolveLaunched ? { onLaunched: (ack: LaunchedAck) => resolveLaunched!(ack) } : {}),
   });
   // A pre-ack failure (e.g., preflight) must not leave launch mode waiting
@@ -350,6 +359,14 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
     return delegationFailureResult(runtimeName, error);
   }
   const expectedChildIndex = delegated.childIndex ?? 0;
+  const advisory = (options.verificationPolicy ?? "advisory") === "advisory";
+  const identityErrors: string[] = [];
+  if (typeof delegated.runId !== "string" || !delegated.runId.trim()) identityErrors.push("runId is missing");
+  if (options.independentFrom?.runtimeName === runtimeName && options.independentFrom.runId === delegated.runId) {
+    identityErrors.push("independent run identity matches the earlier run");
+  }
+  if (identityErrors.length) return { accepted: false, runtimeName, errors: identityErrors, ordinaryAccepted: false, personaAccepted: false, delegated: true, status: "failed", runId: delegated.runId };
+
   let attestation: PersonaAttestation | undefined;
   let attestationPath: string | undefined = delegated.attestationPath;
   try {
@@ -363,17 +380,33 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
       attestationPath = found?.path;
     }
   } catch (error) {
-    return { accepted: false, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, errors: [`host-authored persona attestation could not be read: ${error instanceof Error ? error.message : String(error)}`], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
+    const warning = `host-authored persona attestation could not be read: ${error instanceof Error ? error.message : String(error)}`;
+    if (advisory) return { accepted: false, runtimeName, output: delegated.output, errors: [], warnings: [ ...(delegated.warnings ?? []), warning ], executionStatus: "completed", status: "completed", ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true, runId: delegated.runId };
+    return { accepted: false, runtimeName, output: delegated.output, errors: [warning], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
   }
-  if (!attestation) return { accepted: false, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, errors: ["host-authored persona attestation is missing"], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
+  if (attestation) {
+    // Identity is mandatory even when optional evidence (such as a digest) is absent.
+    if (attestation.runtimeName !== runtimeName) identityErrors.push("runtimeName mismatch");
+    if (attestation.role !== selected.persona.contract.role) identityErrors.push("role mismatch");
+    if (attestation.runId !== delegated.runId) identityErrors.push("runId mismatch");
+    if (!Number.isInteger(attestation.childIndex) || attestation.childIndex < 0) identityErrors.push("childIndex is invalid");
+    else if (attestation.childIndex !== expectedChildIndex) identityErrors.push("childIndex mismatch");
+    if (identityErrors.length) return { accepted: false, runtimeName, errors: identityErrors, ordinaryAccepted: false, personaAccepted: false, delegated: true, status: "failed", runId: delegated.runId };
+  }
+  if (!attestation) {
+    const warning = "host-authored persona attestation is missing; execution completed but is unverified";
+    if (advisory) return { accepted: false, runtimeName, output: delegated.output, errors: [], warnings: [ ...(delegated.warnings ?? []), warning ], executionStatus: "completed", status: "completed", ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true, runId: delegated.runId };
+    return { accepted: false, runtimeName, output: delegated.output, errors: ["host-authored persona attestation is missing"], ordinaryAccepted: delegated.ordinaryAccepted === true, personaAccepted: false, delegated: true };
+  }
   if (!delegated.launchContractDigest) {
-    return { accepted: false, runtimeName, output: delegated.output, attestation, errors: ["pi-subagents delegation response is missing the expected launchContractDigest binding"], ordinaryAccepted: false, personaAccepted: false, delegated: true };
+    const warning = "pi-subagents delegation response is missing the expected launchContractDigest binding";
+    if (advisory) return { accepted: false, runtimeName, output: delegated.output, attestation, errors: [], warnings: [ ...(delegated.warnings ?? []), warning ], executionStatus: "completed", status: "completed", ordinaryAccepted: false, personaAccepted: false, delegated: true, runId: delegated.runId };
+    return { accepted: false, runtimeName, output: delegated.output, attestation, errors: [warning], ordinaryAccepted: false, personaAccepted: false, delegated: true };
   }
   const freshness = attestationFreshness(attestation, attestationPath, attemptStartedAt);
   const childDigestMatches = attestation.launchContractDigest !== undefined && attestation.launchContractDigest === delegated.launchContractDigest;
-  const nonceEchoMatches = false;
   const attemptBindingAccepted = freshness.issuedAtFresh && freshness.fileMtimeFresh;
-  const hasAttemptBinding = childDigestMatches || nonceEchoMatches || freshness.issuedAtFresh;
+  const hasAttemptBinding = childDigestMatches || freshness.issuedAtFresh;
   const verification = verifyAttestation(attestation, {
     runtimeName,
     role: selected.persona.contract.role,
@@ -388,13 +421,17 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
   const ordinaryAccepted = attestation.status === "passed"
     && attestation.runId === delegated.runId
     && (attestation.launchContractDigest === undefined || attestation.launchContractDigest === delegated.launchContractDigest)
-    && attestation.childIndex === expectedChildIndex;
-  const errors = [...verification.errors, ...freshness.errors];
+    && attestation.childIndex === expectedChildIndex
+    && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding);
+  const personaAccepted = verification.valid && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding);
+  const errors = [...(delegated.warnings ?? []), ...verification.errors, ...freshness.errors];
   if (!attemptBindingAccepted) errors.push("attestation freshness does not bind it to the current delegation attempt");
   if (requireAttemptBinding && !hasAttemptBinding) errors.push("attestation has no current-attempt binding (launchContractDigest, nonce, or issuedAt)");
   if (!ordinaryAccepted) errors.push(delegated.ordinaryAcceptanceReason ?? "ordinary pi-subagents acceptance did not pass");
-  const accepted = verification.valid && ordinaryAccepted && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding);
-  return { accepted, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, attestation, errors, ordinaryAccepted: ordinaryAccepted && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding), personaAccepted: verification.valid && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding), delegated: true };
+  const accepted = errors.length === 0 && ordinaryAccepted && personaAccepted;
+  // Stale evidence remains an integrity failure, not optional receipt bookkeeping.
+  const warnOnly = advisory && attemptBindingAccepted && (!requireAttemptBinding || hasAttemptBinding);
+  return { accepted, runtimeName, output: delegated.output, launchContractDigest: delegated.launchContractDigest, attestation, errors: warnOnly ? [] : errors, ...(warnOnly && errors.length ? { warnings: errors } : {}), ordinaryAccepted, personaAccepted, delegated: true, executionStatus: "completed", status: "completed", runId: delegated.runId };
 }
 
 export function packagePreflight(packageRoot: string, runtimeName: string): { valid: boolean; persona?: PersonaFile; errors: string[]; childExtension: string } {

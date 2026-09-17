@@ -169,7 +169,7 @@ describe("delegation response waiter", () => {
 
     bus.emit(fullEventNames.response, { ...identity, status: "completed", runId: "child-run-1", launchContractDigest: "expected-digest", result: { kind: "text", text: "done" } });
     const success = await pending;
-    expect(success).toEqual({ runId: "child-run-1", launchContractDigest: "expected-digest", output: "done" });
+    expect(success).toEqual({ runId: "child-run-1", launchContractDigest: "expected-digest", output: "done", executionStatus: "completed" });
     expect(observed).toEqual(["resolved"]);
   });
 

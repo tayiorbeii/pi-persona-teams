@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { attestationDirectory, createAttestation, writeAttestation, type PersonaAttestation } from "./internal/attestation.ts";
 import { readChildIdentity, personaFileFromIdentity, packageRootFromChildExtension, type ChildIdentity } from "./internal/child-identity.ts";
-import { completeLedger, createLedger, activateMethod, ledgerDeficiencies, missingActivations, recordDisposition, recordPolicyEvent, type PersonaEvidence, type PersonaLedger } from "./internal/ledger.ts";
+import { completeLedger, createLedger, activateMethod, ledgerDeficiencies, recordDisposition, recordPolicyEvent, type PersonaEvidence, type PersonaLedger } from "./internal/ledger.ts";
 import { parsePersonaFile, validatePersonaFile, type PersonaFile } from "./internal/persona-file.ts";
 import { evaluateToolCall, type PolicyDecision } from "./internal/role-policy.ts";
 import { ProviderObserver, type ProviderToolDescriptor } from "./internal/provider-observer.ts";
@@ -53,8 +53,10 @@ export class PersonaChildRuntime {
   private visibilityReported = false;
   private readonly workspace: string;
   private readonly attestationDir: string;
+  private readonly verificationPolicy: "advisory" | "strict";
 
-  constructor(options: { identity: ChildIdentity; personaPath: string; workspace?: string; attestationDir?: string; toolNames?: string[]; tools?: ProviderToolDescriptor[] }) {
+  constructor(options: { identity: ChildIdentity; personaPath: string; workspace?: string; attestationDir?: string; toolNames?: string[]; tools?: ProviderToolDescriptor[]; verificationPolicy?: "advisory" | "strict" }) {
+    this.verificationPolicy = options.verificationPolicy ?? "advisory";
     this.identity = options.identity;
     const validation = validatePersonaFile(options.personaPath);
     if (!validation.valid || !validation.persona) throw new Error(`persona admission failed: ${validation.errors.join("; ")}`);
@@ -85,7 +87,7 @@ export class PersonaChildRuntime {
       this.visibilityReported = true;
       return { ok: true, message: "persona status and actual child tool visibility", status: this.status() };
     }
-    if (!this.visibilityReported) return { ok: false, message: "call persona_contract.status first and report its actual child tool visibility", status: this.status() };
+    if (this.verificationPolicy === "strict" && !this.visibilityReported) return { ok: false, message: "call persona_contract.status first and report its actual child tool visibility", status: this.status() };
     if (action.action === "activate") {
       if (this.ledger.completionStatus === "failed") return { ok: false, message: "persona completion is terminally failed" };
       if (!action.method) return { ok: false, message: "method is required" };
@@ -127,14 +129,14 @@ export class PersonaChildRuntime {
   }
 
   toolCall(toolName: string, input: Record<string, unknown> = {}, correlationId?: string): PolicyDecision {
-    if (!this.visibilityReported) {
+    if (this.verificationPolicy === "strict" && !this.visibilityReported) {
       const reason = "call persona_contract.status first and report its actual child tool visibility";
       recordPolicyEvent(this.ledger, { toolName, inputSummary: toolFingerprint(toolName, input).slice(0, 160), action: "blocked", reason });
       return { allowed: false, reason, substantive: true };
     }
     const fingerprint = toolFingerprint(toolName, input);
     let fallbackGranted = false;
-    if (missingActivations(this.ledger).length === 0 && isNativeCodeRead(toolName, input) && this.providerObserver.availability("jcodemunch") !== "unavailable") {
+    if (isNativeCodeRead(toolName, input) && this.providerObserver.availability("jcodemunch") !== "unavailable") {
       if (this.providerObserver.shouldRedirect("jcodemunch", fingerprint)) {
         const reason = "jCodeMunch is available for this code-orientation operation; use it before broad native exploration";
         recordPolicyEvent(this.ledger, { toolName, inputSummary: fingerprint.slice(0, 160), action: "blocked", reason });
@@ -151,7 +153,7 @@ export class PersonaChildRuntime {
     const policyToolName = observedProvider === "contextMode" && toolName.trim().toLowerCase() === "context-mode.search"
       ? "ctx_search"
       : toolName;
-    const decision = evaluateToolCall(this.ledger, { toolName: policyToolName, input }, this.workspace);
+    const decision = evaluateToolCall(this.ledger, { toolName: policyToolName, input }, this.workspace, { skipMethodGate: this.verificationPolicy === "advisory" });
     if (decision.allowed) {
       const provider = this.providerObserver.observeToolCall(toolName, fingerprint, correlationId);
       if (!provider && /^(?:read|read_file|grep|find|glob|bash|shell|git_)/i.test(toolName)) {
@@ -189,13 +191,14 @@ function isNativeCodeRead(toolName: string, input: Record<string, unknown>): boo
   return Boolean(path && /\.(?:c|cc|cpp|cs|go|java|js|jsx|mjs|py|rb|rs|swift|ts|tsx|vue|svelte)$/i.test(path));
 }
 
-export function createPersonaChildRuntimeFromEnvironment(options: { moduleUrl?: string; environment?: Record<string, string | undefined>; workspace?: string; attestationDir?: string; toolNames?: string[]; tools?: ProviderToolDescriptor[] } = {}): PersonaChildRuntime {
+export function createPersonaChildRuntimeFromEnvironment(options: { moduleUrl?: string; environment?: Record<string, string | undefined>; workspace?: string; attestationDir?: string; toolNames?: string[]; tools?: ProviderToolDescriptor[]; verificationPolicy?: "advisory" | "strict" } = {}): PersonaChildRuntime {
   const environment = options.environment ?? process.env;
   const identity = readChildIdentity(environment);
+  const verificationPolicy = options.verificationPolicy ?? "advisory";
   const packageRoot = packageRootFromChildExtension(options.moduleUrl ?? import.meta.url);
   const personaPath = personaFileFromIdentity(identity, packageRoot);
   if (!existsSync(personaPath)) throw new Error(`canonical persona file does not exist: ${personaPath}`);
-  return new PersonaChildRuntime({ identity, personaPath, workspace: options.workspace, attestationDir: options.attestationDir ?? environment.PI_PERSONA_ATTESTATION_DIR, toolNames: options.toolNames, tools: options.tools });
+  return new PersonaChildRuntime({ identity, personaPath, workspace: options.workspace, attestationDir: options.attestationDir ?? environment.PI_PERSONA_ATTESTATION_DIR, toolNames: options.toolNames, tools: options.tools, verificationPolicy });
 }
 
 function toolParameters(): Record<string, unknown> {

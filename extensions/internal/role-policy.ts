@@ -127,10 +127,11 @@ export function evaluateToolCall(
   ledger: PersonaLedger,
   tool: ToolCall,
   workspace: string,
+  options: { skipMethodGate?: boolean } = {},
 ): PolicyDecision {
   const substantive = isSubstantiveCall(tool);
   const missing = missingActivations(ledger);
-  if (substantive && missing.length > 0) {
+  if (substantive && missing.length > 0 && !options.skipMethodGate) {
     const reason = `activate every mandatory method before substantive work; missing: ${missing.join(", ")}`;
     recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: summarizeInput(tool.input), action: "blocked", reason });
     return { allowed: false, reason, missingMethods: missing, substantive: true };

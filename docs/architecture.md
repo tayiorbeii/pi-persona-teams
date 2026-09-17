@@ -3,7 +3,7 @@
 The package has two Pi extensions and one canonical source format:
 
 - `extensions/persona-parent.ts` registers the thin `persona_team` facade. It validates package agents and reports the installed host's public pi-subagents surface; it never launches a child process or imports pi-subagents internals.
-- `extensions/persona-child.ts` resolves `PI_SUBAGENT_CHILD_AGENT`, parses exactly that Markdown file, exposes `persona_contract`, reports the bound child tool registry on the mandatory first `status` call, gates actual tool calls, records provider evidence, and writes the host-authored attestation.
+- `extensions/persona-child.ts` resolves `PI_SUBAGENT_CHILD_AGENT`, parses exactly that Markdown file, exposes `persona_contract`, reports the bound child tool registry on an optional `status` call, gates actual tool calls, records provider evidence, and writes the host-authored attestation.
 - `extensions/internal/` contains generic parser, ledger, role-policy, provider-observer, identity, and attestation mechanics. It contains no persona prose, role-to-method table, or copied method body.
 
 Each `agents/<slug>.md` is independently understandable and independently validatable. Method duplication is intentional and its body hash/provenance are embedded in each file.
@@ -14,8 +14,8 @@ Official `pi-subagents` 0.51 exposes public preflight APIs, a model-callable `su
 
 ## Enforcement boundary
 
-Agent definitions omit `tools:` and `extensions:` so each child inherits Pi's normal builtin tools, configured settings, and ambient extension registry instead of a package-maintained snapshot. The child extension then enforces observable process behavior at call time: activation before substantive calls, role authority, dispositions, provider accounting, and completion. It is not an operating-system sandbox; shell calls still carry the user's permissions.
+Agent definitions declare their tool allowlists and child extension. The child runtime provides expertise by default without status or activation prerequisites, while enforcing role authority, provider routing, and workspace/shell policy. Formal receipt collection remains available through `persona_contract`; its completion validator is unchanged. A strict parent request adds protocol guidance to the task and checks evidence at acceptance time. That text does not change child permissions or carry a trusted runtime policy; no private bridge field or environment flag is needed. It is not an operating-system sandbox; shell calls still carry the user's permissions.
 
 ## Acceptance boundary
 
-Persona compliance and ordinary work acceptance are separate. The pure facade accepts a run only when the canonical identity and method hashes match a passing host attestation and the ordinary pi-subagents acceptance result also passes.
+Persona compliance and ordinary work acceptance are separate. `persona_team` defaults to advisory verification: completed output may be returned with warnings but `accepted`, `ordinaryAccepted`, and `personaAccepted` remain truthful. Strict opt-in accepts a run only when canonical identity and method hashes match a passing host attestation and ordinary pi-subagents acceptance also passes.

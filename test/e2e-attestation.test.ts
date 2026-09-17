@@ -72,9 +72,23 @@ test("parent accepts a persisted host attestation and rejects reused run identit
   expect(accepted.personaAccepted).toBe(true);
   expect(accepted.ordinaryAccepted).toBe(true);
 
+  for (const verificationPolicy of ["advisory", "strict"] as const) {
+    const warned = await runPersona({
+      packageRoot: root,
+      workspace: root,
+      attemptStartedAt,
+      verificationPolicy,
+      delegate: async () => ({ ...childRun, output: "Useful but not launch-verified", ordinaryAccepted: true, warnings: ["preflight digest mismatch"] }),
+    }, "persona-team.engineering-manager", "Produce a bounded engineering plan.");
+    expect(warned.accepted).toBe(false);
+    expect(warned.output).toBe("Useful but not launch-verified");
+    expect(verificationPolicy === "advisory" ? warned.warnings : warned.errors).toContain("preflight digest mismatch");
+  }
+
   const reused = await runPersona({
     packageRoot: root,
     workspace: root,
+    verificationPolicy: "strict",
     independentFrom: { runtimeName: "persona-team.engineering-manager", runId: childRun.runId },
     delegate: async () => ({ ...childRun, launchContractDigest: persisted.launchContractDigest, ordinaryAccepted: true }),
   }, "persona-team.engineering-manager", "Produce a second independent engineering plan.");
@@ -126,6 +140,7 @@ test("failure attestation persists across lifecycle shutdown and is rejected by 
   const accepted = await runPersona({
     packageRoot: root,
     workspace: root,
+    verificationPolicy: "strict",
     delegate: async () => ({ runId: "failed-lifecycle", childIndex: 4, attestationPath: persisted.path, launchContractDigest: reloaded.launchContractDigest, ordinaryAccepted: true }),
   }, "persona-team.engineering-manager", "Recover the failed lifecycle run.");
   expect(accepted.accepted).toBe(false);

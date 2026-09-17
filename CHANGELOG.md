@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Expertise-first verification
+
+- Added advisory (default) and strict opt-in verification policies. Advisory completed runs return useful output with explicit warnings when digest or persona-attestation evidence is missing/mismatched, while formal acceptance booleans remain truthful; strict remains fail-closed. Idempotency keys are isolated by policy.
+
 ### Delegation timeout hardening
 
 - Removed the unsupported `version` field from structured delegation requests: pi-subagents bridges reject unknown request fields and never echo a version in responses, so the field turned every delegation into a silent `invalid_request` and a ten-minute parent timeout. The request wire format is pinned by a regression test.

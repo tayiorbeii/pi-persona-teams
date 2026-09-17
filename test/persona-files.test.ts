@@ -61,10 +61,17 @@ describe("independent persona files", () => {
     }
   });
 
-  test("persona-team dispatch guidance requires schemas, small fan-out, and bounded finalization", () => {
+  test("persona-team guidance defaults to expertise with opt-in receipts and bounded fan-out", () => {
     const source = readFileSync(join(root, "skills", "persona-team", "SKILL.md"), "utf8");
-    expect(source).toContain("outputSchema");
-    expect(source).toContain("toolVisibility");
+    expect(source).toContain("Ordinary advisory work does not require preliminary status, activation, disposition, or completion receipts");
+    expect(source).toContain('verificationPolicy: "strict"');
+    expect(source).not.toContain("Require an explicit object `outputSchema`");
+    for (const role of Object.keys(expectedMethods)) {
+      const persona = readFileSync(join(root, "agents", `${role}.md`), "utf8");
+      expect(persona).toContain("Provide expertise without a preliminary receipt checklist");
+      expect(persona).not.toContain("The host-reported policy controls ceremony");
+      expect(persona).not.toContain("Your first persona tool call must be");
+    }
     expect(source).toContain("At most two concurrent personas");
     expect(source).toContain("Partial or timed-out child transcripts are not evidence");
     expect(source).toContain("octocode-research");

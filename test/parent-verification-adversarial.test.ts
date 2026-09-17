@@ -26,10 +26,11 @@ describe("adversarial parent verification", () => {
     const result = await runPersona({
       packageRoot: root,
       workspace: root,
+      verificationPolicy: "strict",
       delegate: async () => ({
         runId: "missing-response-digest",
         ordinaryAccepted: true,
-        attestation: { launchContractDigest: "attested-digest" } as any,
+        attestation: { runtimeName: "persona-team.engineering-manager", role: "engineering-manager", runId: "missing-response-digest", childIndex: 0, launchContractDigest: "attested-digest" } as any,
       }),
     }, "persona-team.engineering-manager", "Produce a bounded plan.");
 
@@ -43,17 +44,43 @@ describe("adversarial parent verification", () => {
     const result = await runPersona({
       packageRoot: root,
       workspace: root,
+      verificationPolicy: "strict",
       delegate: async () => ({
         runId: "missing-attestation-digest",
         launchContractDigest: "expected-digest",
         ordinaryAccepted: true,
-        attestation: {} as any,
+        attestation: { runtimeName: "persona-team.engineering-manager", role: "engineering-manager", runId: "missing-attestation-digest", childIndex: 0 } as any,
       }),
     }, "persona-team.engineering-manager", "Produce a bounded plan.");
 
     expect(result.accepted).toBe(false);
     expect(result.personaAccepted).toBe(false);
     expect(result.errors).toContain("attestation status is invalid");
+  });
+
+  test("advisory returns completed output with warning for missing attestation", async () => {
+    const result = await runPersona({
+      packageRoot: root,
+      workspace: root,
+      delegate: async () => ({ runId: "advisory-missing-attestation", output: "expert answer", ordinaryAccepted: false }),
+    }, "persona-team.engineering-manager", "Give bounded advice.");
+    expect(result.accepted).toBe(false);
+    expect(result.output).toBe("expert answer");
+    expect(result.executionStatus).toBe("completed");
+    expect(result.warnings?.some((warning) => warning.includes("attestation is missing"))).toBe(true);
+    expect(result.personaAccepted).toBe(false);
+    expect(result.ordinaryAccepted).toBe(false);
+  });
+
+  test("execution failure remains a failure under advisory policy", async () => {
+    const result = await runPersona({
+      packageRoot: root,
+      workspace: root,
+      delegate: async () => { throw new Error("child execution failed"); },
+    }, "persona-team.engineering-manager", "Give bounded advice.");
+    expect(result.status).toBe("failed");
+    expect(result.executionStatus).toBeUndefined();
+    expect(result.output).toBeUndefined();
   });
 
   test("doctor is not ready when preflight validates only one canonical runtime", async () => {

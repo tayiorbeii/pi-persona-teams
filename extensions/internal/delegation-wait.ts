@@ -65,8 +65,10 @@ export interface LaunchedAck {
 
 export interface DelegationWaitSuccess {
   runId: string;
-  launchContractDigest: string;
+  launchContractDigest?: string;
   output?: string;
+  warnings?: string[];
+  executionStatus?: "completed";
 }
 
 /** Tail length kept for `recentOutput` in progress-timeout evidence. */
@@ -96,7 +98,8 @@ export function waitForDelegationResponse(options: {
   eventNames: DelegationWaitEventNames;
   identity: DelegationWaitIdentity;
   delegationRequest: Record<string, unknown>;
-  expectedLaunchContractDigest: string;
+  expectedLaunchContractDigest?: string;
+  verificationPolicy?: "advisory" | "strict";
   waitMs: number;
   /** Fast-fail bound for the bridge acceptance ack (the first matching started/update event). Ignored on bridges without the update event. */
   ackTimeoutMs?: number;
@@ -104,7 +107,7 @@ export function waitForDelegationResponse(options: {
   progressTimeoutMs?: number;
   onLaunched?: (ack: LaunchedAck) => void;
 }): Promise<DelegationWaitSuccess> {
-  const { bus, eventNames, identity, delegationRequest, expectedLaunchContractDigest, waitMs, ackTimeoutMs, progressTimeoutMs, onLaunched } = options;
+  const { bus, eventNames, identity, delegationRequest, expectedLaunchContractDigest, verificationPolicy = "strict", waitMs, ackTimeoutMs, progressTimeoutMs, onLaunched } = options;
   const { requestId, ownerRunId, nodeId } = identity;
   // Older bridges cannot report progress: without the update event neither
   // new bound arms, preserving the historical cap-only behavior so a bridge
@@ -262,23 +265,25 @@ export function waitForDelegationResponse(options: {
         }));
         return;
       }
-      if (!response.runId) {
+      if (typeof response.runId !== "string" || !response.runId.trim()) {
         reject(enrichedError("pi-subagents delegation completed without a child run ID", identity, { status: "completed" }));
         return;
       }
-      if (!response.launchContractDigest) {
-        reject(enrichedError("pi-subagents delegation completed without launchContractDigest evidence", identity, { status: "completed", runId: response.runId }));
-        return;
-      }
-      if (response.launchContractDigest !== expectedLaunchContractDigest) {
-        reject(enrichedError("pi-subagents delegation launchContractDigest does not match the immutable preflight contract", identity, { status: "completed", runId: response.runId }));
+      const warnings: string[] = [];
+      if (!expectedLaunchContractDigest) warnings.push("preflight launchContractDigest evidence is missing; execution completed but is unverified");
+      if (!response.launchContractDigest) warnings.push("launchContractDigest evidence is missing; execution completed but is unverified");
+      else if (response.launchContractDigest !== expectedLaunchContractDigest) warnings.push("launchContractDigest does not match the immutable preflight contract; execution completed but is unverified");
+      if (warnings.length > 0 && verificationPolicy === "strict") {
+        reject(enrichedError(warnings[0]!, identity, { status: "completed", runId: response.runId }));
         return;
       }
       const output = response.result?.kind === "text" ? response.result.text : response.result?.value === undefined ? undefined : JSON.stringify(response.result.value);
       resolve({
         runId: response.runId,
-        launchContractDigest: response.launchContractDigest,
+        executionStatus: "completed",
+        ...(response.launchContractDigest ? { launchContractDigest: response.launchContractDigest } : {}),
         ...(output !== undefined ? { output } : {}),
+        ...(warnings.length > 0 ? { warnings } : {}),
       });
     });
 

@@ -31,6 +31,7 @@ test("structured output is allowed only after every mandatory method activates",
     personaPath: join(root, "agents", "staff-reviewer.md"),
     workspace: root,
     attestationDir: join(root, ".tmp-attestations"),
+    verificationPolicy: "strict",
   });
   expect(runtime.handle({ action: "status" }).ok).toBe(true);
   expect(runtime.toolCall("structured_output", { findings: [] }).allowed).toBe(false);

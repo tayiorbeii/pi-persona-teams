@@ -1,20 +1,20 @@
 ---
 name: persona-team
-description: Use canonical persona-team agents through pi-subagents for bounded role work with independent review and attestation requirements.
+description: Use canonical persona-team agents for bounded expert advice and independent review, with optional strict attestation.
 ---
 
 # Persona Team
 
-Use one canonical `persona-team.<slug>` agent. `persona_team action=list` and `persona_team action=doctor` are the preflight surface: they list personas and authorities and report provider readiness. `persona_team action=run` starts a bounded child and supports non-blocking `mode: "launch"`, idempotent `runKey` attach, and per-call `responseTimeoutMs`; the plain `subagent` tool remains the alternative path. Do not start a second launcher.
+Use one canonical `persona-team.<slug>` agent. `persona_team action=list` and `persona_team action=doctor` are the preflight surface: they list personas and authorities and report provider readiness. `persona_team action=run` starts a bounded child and supports non-blocking `mode: "launch"`, idempotent `runKey` attach, per-call `responseTimeoutMs`, and `verificationPolicy` (`advisory` default; `strict` opt-in); advisory output is useful but explicitly unverified when evidence is incomplete. The plain `subagent` tool remains the alternative path. Do not start a second launcher.
 
 ## Bounded dispatch
 
 1. Give each persona one role question, one artifact, or one review boundary. At most two concurrent personas may run; prefer one.
 2. Set `responseTimeoutMs` explicitly on every run instead of silently accepting the 10-minute default, and scale it to the role: read-only review and planning 300000-420000; implementation-engineer 420000-600000. The child run deadline is automatically the parent wait minus a 30-second margin, so typed bridge terminals (`timed_out`/`cancelled`) arrive before the parent gives up. If a task plausibly needs more, split it into smaller bounded runs. Keep the package defaults `turnBudget: {"maxTurns":8,"graceTurns":1}` and `toolBudget: {"soft":12,"hard":18,"block":["*"]}`. The single grace turn is for finalization after tools stop. Do not add a `tools` or `extensions` override.
-3. Require an explicit object `outputSchema`. Its common envelope must require `toolVisibility`, `status`, `findings`, `evidence`, `risks`, and `next`; add role-specific fields instead of asking for broad prose.
-4. The child's first persona tool call must be `persona_contract.status`. The child must copy the returned `toolVisibility.available` names and report whether `octocode-research`, `ponytail`, and `i-have-adhd` are actually visible before substantive work. Parent visibility is not child evidence.
-5. Then the child activates every mandatory method, performs the bounded task, records dispositions, and calls `persona_contract.complete`.
-6. Require a host-authored `pi.persona-attestation/v1` artifact and ordinary acceptance. Keep writer and reviewer identities independent.
+3. Ask for concise findings, supporting evidence, uncertainties, and a recommendation. Use a structured output schema only when a downstream consumer needs it and the chosen launcher supports it; `persona_team` itself returns text output.
+4. Ordinary advisory work does not require preliminary status, activation, disposition, or completion receipts. Use `persona_contract.status` when tool visibility matters; never infer child visibility from the parent.
+5. For an explicit formal gate, set `verificationPolicy: "strict"`. The parent requests status, method activation before substantive work, dispositions, and `persona_contract.complete`, and validates the resulting evidence. Task instructions request the protocol; they do not grant permissions.
+6. In strict workflows require a host-authored `pi.persona-attestation/v1` artifact and ordinary acceptance. Advisory runs may return completed output with warnings, but never treat it as verified; keep writer and reviewer identities independent.
 7. Partial or timed-out child transcripts are not evidence. A wait-mode timeout has already asked the bridge to cancel the child, so the attempt is terminal, not ambiguous — follow "After a timeout: check, attach, never blind-retry" before any relaunch.
 
 ## Capability check before assignment
@@ -29,14 +29,14 @@ Use one canonical `persona-team.<slug>` agent. `persona_team action=list` and `p
 
 1. Launch reviewer personas (`qa-lead`, `staff-reviewer`, `security-officer`, `product-designer`, `founder-ceo`, `engineering-manager`, `devex-lead`, `release-engineer`, `retro-ops-manager`) with `persona_team {action:"run", mode:"launch", runKey:"<stable-key>", responseTimeoutMs:300000..420000}`. Launch returns a handle (`status: "launched"`, `runKey`, and the child `runId` once the bridge reports it) without waiting for the child to finish; only the bridge acceptance ack (about 30 seconds) is awaited. Continue other work or return control immediately.
 2. Keep the `runKey` — it is the attach handle. Without an explicit key only the default persona+task digest ties a retry to the original child, and any task rewording breaks that tie.
-3. Collect with `persona_team {action:"run", persona, task, runKey, mode:"wait"}`: while the child is in flight this attaches to the same attempt (no duplicate child) and blocks only for the remaining wait window; at terminal it returns the verified result and attestation. The attach window closes at terminal: before collecting after a long delay, check `.pi-persona/attestations/` for the runId, because a post-terminal call with the same `runKey` starts a fresh child.
+3. Collect with `persona_team {action:"run", persona, task, runKey, mode:"wait"}`: while the child is in flight this attaches to the same attempt (no duplicate child) and blocks only for the remaining wait window; at terminal it returns completed output with any verification warnings. Keep the same `verificationPolicy` when attaching; advisory and strict requests never share an in-flight run. The attach window closes at terminal: before collecting after a long delay, check `.pi-persona/attestations/` for the runId, because a post-terminal call with the same `runKey` starts a fresh child.
 4. A synchronous foreground wait (`mode:"wait"` from the start) is acceptable only for `implementation-engineer` on a small bounded task with an explicit `responseTimeoutMs`, or when the parent genuinely has nothing else to do for the whole window.
 
 ## After a timeout: check, attach, never blind-retry
 
 1. A wait-mode timeout reports `timedOut: true` with the child `runId` when the bridge reported one, and the parent has already emitted the bridge cancel, so the child aborts instead of being orphaned. The attempt is terminal — but its partial transcript still is not evidence.
-2. Check `.pi-persona/attestations/` for `<runId>-*.json` and `.pi-subagents/artifacts/` for that runId first: a child that finished just after the deadline is valid, attachable evidence. Verify it normally (host validation, `toolVisibility`, method dispositions) and do not re-run.
-3. With no attestation, the child was cancelled mid-flight. A deliberate relaunch is then safe: the settled attempt no longer occupies its `runKey`, so use a fresh bounded run with a smaller scope and record the new `runKey`/`runId`.
+2. Check the bridge terminal status and `.pi-subagents/artifacts/` for that runId before retrying. A missing or failed persona attestation alone does not prove the child failed: ordinary advisory work need not collect receipts.
+3. Once cancellation or failure is confirmed, a deliberate relaunch is safe: use a smaller scope and record the new `runKey`/`runId`. Never treat incomplete output as a completed review.
 4. Two timeouts on the same persona/task is a routing signal: finish the remaining work in the parent session.
 
 ## When the parent does the work itself
@@ -49,7 +49,7 @@ Do not dispatch to a persona when any of these hold; run the check inline as the
 - the task needs interactive iteration beyond the 8-turn budget or the two-persona concurrency cap;
 - the check would take the parent less time than the dispatch ceremony (quick greps, one test file, a config read).
 
-Personas earn their overhead on independent judgment and attested evidence, not on environment access they do not have.
+Personas earn their overhead on independent judgment, not receipt ceremony or environment access they do not have.
 
 ## Resource routing
 

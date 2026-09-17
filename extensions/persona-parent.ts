@@ -75,7 +75,8 @@ function toolParameters(): Record<string, unknown> {
       ackTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Fail fast when the bridge does not acknowledge acceptance within this bound (default 30000). The launch never started, so retrying with the same runKey is safe." },
       progressTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Cancel the child when no progress update arrives for this long (default 120000); the bound resets on every progress update." },
       runKey: { type: "string", description: "Idempotency key: re-running with the same runKey attaches to the in-flight child instead of launching a duplicate. Default: a digest of persona+task." },
-      mode: { type: "string", enum: ["wait", "launch"], description: "launch returns a run handle (runId, runKey, cancel identity) as soon as the bridge accepts the attempt; wait (default) blocks for terminal completion and full attestation verification." },
+      mode: { type: "string", enum: ["wait", "launch"], description: "launch returns a run handle as soon as the bridge accepts the attempt; wait (default) blocks for terminal completion." },
+      verificationPolicy: { type: "string", enum: ["advisory", "strict"], description: "advisory (default) returns completed output with explicit warnings when nonessential evidence is missing or mismatched; strict fails closed." },
     },
     required: ["action"],
   };
@@ -141,6 +142,10 @@ export function idempotencyKeyFor(request: Pick<DelegationRequest, "agent" | "ta
 }
 
 async function startDelegation(pi: any, workspace: string, request: DelegationRequest, key: string): Promise<DelegationResult> {
+  const verificationPolicy = request.verificationPolicy ?? "advisory";
+  const task = verificationPolicy === "strict"
+    ? `${request.task}\n\nStrict verification requested: collect persona_contract.status, activate and disposition each required method, then complete with host-verifiable evidence.`
+    : request.task;
   const preflightName: string = "pi-subagents/preflight";
   const preflight = await import(preflightName) as {
     resolveSubagentLaunchContract?: (input: Record<string, unknown>) => Promise<{
@@ -160,14 +165,14 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
   if (!preflight.resolveSubagentLaunchContract) throw new Error("pi-subagents preflight API is unavailable");
   const launch = await preflight.resolveSubagentLaunchContract({
     agent: request.agent,
-    task: request.task,
+    task,
     context: request.context,
     cwd: workspace,
     availableModels: typeof pi.modelRegistry?.getAvailable === "function" ? pi.modelRegistry.getAvailable() : [],
   });
   if (!launch.ok || !launch.contract) throw new Error(launch.message ?? "persona launch preflight failed");
   const expectedLaunchContractDigest = launch.contract.launchContractDigest ?? launch.contract.digest;
-  if (!expectedLaunchContractDigest) throw new Error("pi-subagents preflight returned a launch contract without launchContractDigest");
+  if (!expectedLaunchContractDigest && verificationPolicy === "strict") throw new Error("pi-subagents preflight returned a launch contract without launchContractDigest");
   const extensionPaths = [
     ...(launch.contract.tools?.toolExtensionPaths ?? []),
     ...(launch.contract.tools?.runtimeExtensions ?? []),
@@ -200,7 +205,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     ownerRunId,
     nodeId,
     agent: request.agent,
-    task: request.task,
+    task,
     context: request.context,
     workspace,
     timeoutMs: resolveChildTimeoutMs(waitMs),
@@ -223,6 +228,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     waitMs,
     ackTimeoutMs: resolveAckTimeoutMs(request.ackTimeoutMs),
     progressTimeoutMs: resolveProgressTimeoutMs(request.progressTimeoutMs),
+    verificationPolicy,
     onLaunched: (ack) => {
       launchedAcks.set(key, ack);
       request.onLaunched?.(ack);
@@ -232,7 +238,9 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     runId: success.runId,
     ordinaryAccepted: false as const,
     ordinaryAcceptanceReason: "terminal completion is not ordinary acceptance evidence",
-    launchContractDigest: success.launchContractDigest,
+    ...(success.launchContractDigest ? { launchContractDigest: success.launchContractDigest } : {}),
+    ...(success.warnings ? { warnings: success.warnings } : {}),
+    ...(success.executionStatus ? { executionStatus: success.executionStatus } : {}),
   }));
 }
 
@@ -243,7 +251,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
  * a duplicate child.
  */
 export async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest): Promise<DelegationResult> {
-  const key = idempotencyKeyFor(request);
+  const key = `${request.verificationPolicy ?? "advisory"}:${idempotencyKeyFor(request)}`;
   const existing = pendingDelegations.get(key);
   if (existing) {
     const ack = launchedAcks.get(key);
@@ -277,7 +285,7 @@ export default function personaParentExtension(pi: any): void {
     label: "Persona Team",
     description: "List, diagnose, or run a canonical pi-persona-teams persona.",
     parameters: toolParameters(),
-    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; ackTimeoutMs?: number; progressTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch" }) {
+    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; ackTimeoutMs?: number; progressTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch"; verificationPolicy?: "advisory" | "strict" }) {
       if (params.action === "list") {
         const result = listPersonas(root);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
@@ -313,6 +321,7 @@ export default function personaParentExtension(pi: any): void {
         attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(process.cwd(), ".pi-persona", "attestations"),
         attemptStartedAt,
         requireAttemptBinding: process.env.PI_PERSONA_REQUIRE_ATTEMPT_BINDING !== "0",
+        verificationPolicy: params.verificationPolicy ?? "advisory",
         delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };

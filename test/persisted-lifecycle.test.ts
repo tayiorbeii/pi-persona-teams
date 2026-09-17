@@ -25,6 +25,7 @@ test("child contract status, ledger completion, and persisted attestation stay c
       workspace,
       attestationDir,
       toolNames: ["ctx_search"],
+      verificationPolicy: "strict",
     });
     expect(child.toolCall("read", { path: "README.md" })).toMatchObject({ allowed: false, reason: expect.stringContaining("persona_contract.status") });
     const initial = child.handle({ action: "status" });

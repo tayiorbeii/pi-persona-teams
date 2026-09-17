@@ -12,15 +12,19 @@ const STARTED_EVENT = "test:persona:started";
 const UPDATE_EVENT = "test:persona:update";
 const CANCEL_EVENT = "test:persona:cancel";
 
+const preflightInputs: Array<Record<string, unknown>> = [];
 mock.module("pi-subagents/preflight", () => ({
-  resolveSubagentLaunchContract: async () => ({
-    ok: true,
-    contract: {
-      launchContractDigest: "preflight-digest",
-      agent: { name: "persona-team.qa-lead", source: "package", filePath: "/pkg/agents/qa-lead.md" },
-      tools: { configuredExtensions: ["/pkg/extensions/persona-child.ts"] },
-    },
-  }),
+  resolveSubagentLaunchContract: async (input: Record<string, unknown>) => {
+    preflightInputs.push(input);
+    return {
+      ok: true,
+      contract: {
+        launchContractDigest: "preflight-digest",
+        agent: { name: "persona-team.qa-lead", source: "package", filePath: "/pkg/agents/qa-lead.md" },
+        tools: { configuredExtensions: ["/pkg/extensions/persona-child.ts"] },
+      },
+    };
+  },
 }));
 
 mock.module("pi-subagents/delegation", () => ({
@@ -71,6 +75,26 @@ function settleCompleted(bus: FakeDelegationBus, requestId: string, nodeId: stri
 }
 
 describe("delegation idempotency", () => {
+  test("advisory and strict requests never share an in-flight run or diverge from preflight task text", async () => {
+    const bus = new FakeDelegationBus();
+    const request: DelegationRequest = { agent: "persona-team.qa-lead", task: "policy-isolation-task", context: "fresh", idempotencyKey: "policy-isolation-key" };
+    const first = delegateThroughPiSubagents(fakePi(bus), "/tmp/w", request);
+    const strict = delegateThroughPiSubagents(fakePi(bus), "/tmp/w", { ...request, verificationPolicy: "strict" });
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 1));
+    const emitted = bus.requests();
+    expect(emitted).toHaveLength(2);
+    expect(emitted[0].task).toBe(request.task);
+    expect(emitted[1].task).toContain("Strict verification requested");
+    for (const entry of emitted) {
+      expect(preflightInputs.some((input) => input.task === entry.task)).toBe(true);
+      settleCompleted(bus, entry.requestId, entry.nodeId, `child-${entry.requestId}`);
+    }
+    const [advice, evidence] = await Promise.all([first, strict]);
+    expect(advice.runId).not.toBe(evidence.runId);
+    expect(advice.executionStatus).toBe("completed");
+    expect(evidence.executionStatus).toBe("completed");
+  });
+
   test("explicit runKey wins; otherwise the key is a stable digest of agent and task", () => {
     expect(idempotencyKeyFor({ agent: "persona-team.qa-lead", task: "task-a", idempotencyKey: "explicit" })).toBe("explicit");
     const first = idempotencyKeyFor({ agent: "persona-team.qa-lead", task: "task-a" });
