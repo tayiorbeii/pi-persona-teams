@@ -1,0 +1,41 @@
+diff --git a/node_modules/pi-subagents/src/runs/background/subagent-runner.ts b/node_modules/pi-subagents/src/runs/background/subagent-runner.ts
+index 8ed367a..a352b4b 100644
+--- a/node_modules/pi-subagents/src/runs/background/subagent-runner.ts
++++ b/node_modules/pi-subagents/src/runs/background/subagent-runner.ts
+@@ -539,6 +539,18 @@ function runPiStreaming(
+ 		onWriterProcess?.({ state: "spawning" });
+ 		const outputStream = fs.createWriteStream(outputFile, { flags: "w" });
+ 		const spawnEnv = { ...process.env, ...(env ?? {}), ...getSubagentDepthEnv(maxSubagentDepth) };
++		// Fix (context-mode/jcodemunch integration): ambient project-root env vars
++		// (CONTEXT_MODE_PROJECT_DIR, CLAUDE_PROJECT_DIR, PWD) inherited verbatim from
++		// `process.env` outrank the child's actual OS-level `cwd` in context-mode's
++		// getProjectDir() resolution order. Without resetting them here, a child
++		// spawned against a different worktree/cwd still has its context-mode MCP
++		// tools (reads, writes, indexing, security boundary checks) hard-pinned to
++		// the parent process's original project root. Always reset them to the
++		// child's real `cwd` so nested MCP servers spawned inside the child resolve
++		// the correct project boundary.
++		spawnEnv.PWD = cwd;
++		spawnEnv.CONTEXT_MODE_PROJECT_DIR = cwd;
++		spawnEnv.CLAUDE_PROJECT_DIR = cwd;
+ 		const spawnSpec = getPiSpawnCommand(args, {
+ 			...(piPackageRoot ? { piPackageRoot } : {}),
+ 			...(piArgv1 ? { argv1: piArgv1 } : {}),
+diff --git a/node_modules/pi-subagents/src/runs/foreground/execution.ts b/node_modules/pi-subagents/src/runs/foreground/execution.ts
+index 8187203..1241815 100644
+--- a/node_modules/pi-subagents/src/runs/foreground/execution.ts
++++ b/node_modules/pi-subagents/src/runs/foreground/execution.ts
+@@ -461,6 +461,13 @@ async function runSingleAttempt(
+ 		return result;
+ 	}
+ 	const spawnEnv = { ...process.env, ...sharedEnv, ...getSubagentDepthEnv(options.maxSubagentDepth) };
++	// Fix (context-mode/jcodemunch integration): see matching comment in
++	// runs/background/subagent-runner.ts. Reset ambient project-root env vars to
++	// the child's real cwd so nested MCP servers resolve the correct boundary.
++	const __effectiveCwd = options.cwd ?? runtimeCwd;
++	spawnEnv.PWD = __effectiveCwd;
++	spawnEnv.CONTEXT_MODE_PROJECT_DIR = __effectiveCwd;
++	spawnEnv.CLAUDE_PROJECT_DIR = __effectiveCwd;
+ 	let observedMutationAttempt = false;
+ 	let structuredOutputToolInvoked = false;
+ 	let structuredOutputMessageStartIndex: number | undefined;

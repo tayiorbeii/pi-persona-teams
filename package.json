@@ -5,15 +5,24 @@
   "type": "module",
   "license": "MIT",
   "pi": {
-    "extensions": ["./extensions/persona-parent.ts"],
-    "skills": ["./skills/persona-team"],
-    "subagents": { "agents": ["./agents"] }
+    "extensions": [
+      "./extensions/persona-parent.ts"
+    ],
+    "skills": [
+      "./skills/persona-team"
+    ],
+    "subagents": {
+      "agents": [
+        "./agents"
+      ]
+    }
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": ">=0.82.1 <0.85.0",
     "pi-subagents": ">=0.47.1 <0.48.0"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "test": "bun test test/*.test.ts",
     "typecheck": "bunx tsc --noEmit",
     "verify:personas": "bun scripts/verify-personas.ts",
@@ -21,5 +30,18 @@
     "copy:method": "bun scripts/copy-method-into-persona.ts",
     "report:upstream-drift": "bun scripts/report-upstream-drift.ts"
   },
-  "files": ["agents", "extensions", "scripts", "schemas", "skills", "README.md", "CHANGELOG.md", "LICENSE"]
+  "files": [
+    "agents",
+    "extensions",
+    "scripts",
+    "schemas",
+    "skills",
+    "patches",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "patch-package": "^8.0.1"
+  }
 }
