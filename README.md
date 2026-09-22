@@ -32,6 +32,8 @@ Persona defaults are deliberately bounded: 10-minute parent wait (child deadline
 
 Formal acceptance requires a passing host-authored attestation tied to the current child and delegation attempt, including issuance time and artifact freshness. Terminal completion alone is not approval. Stale or reused evidence remains an error in both policies; a completed advisory review without formal receipts is still usable advice.
 
+Every persona write, including report artifacts, must resolve inside the assigned workspace; `doctor` also checks the configured attestation directory (`PI_PERSONA_ATTESTATION_DIR` or an `attestationDir` override) against the workspace before a run is attempted. If other host tooling (e.g. `pi-subagents`) is configured to route output to a shared/global directory outside the checkout, point it at an in-checkout path instead — see [Workspace containment and external output routing](./docs/architecture.md#workspace-containment-and-external-output-routing).
+
 ## Persona files
 
 The ten runtime names are `persona-team.founder-ceo`, `persona-team.product-designer`, `persona-team.devex-lead`, `persona-team.engineering-manager`, `persona-team.implementation-engineer`, `persona-team.staff-reviewer`, `persona-team.security-officer`, `persona-team.qa-lead`, `persona-team.release-engineer`, and `persona-team.retro-ops-manager`.

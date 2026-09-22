@@ -298,6 +298,7 @@ export default function personaParentExtension(pi: any): void {
           toolNames: tools.map((tool) => tool.name ?? ""),
           toolDescriptors: tools,
           discover: discoverThroughPiSubagents,
+          attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(process.cwd(), ".pi-persona", "attestations"),
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
       }

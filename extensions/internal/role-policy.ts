@@ -72,7 +72,7 @@ function canonicalPath(candidate: string): string | undefined {
   }
 }
 
-function isInsideWorkspace(workspace: string, candidate: string): boolean {
+export function isInsideWorkspace(workspace: string, candidate: string): boolean {
   const workspacePath = canonicalPath(workspace);
   const absolute = isAbsolute(candidate) ? resolve(candidate) : resolve(workspace, candidate);
   const candidatePath = canonicalPath(absolute);
@@ -154,7 +154,7 @@ export function evaluateToolCall(
   const candidatePaths = pathsFromInput(input);
   if (WRITE_TOOL.test(tool.toolName)) {
     if (!candidatePaths || candidatePaths.some((candidate) => !isInsideWorkspace(workspace, candidate))) {
-      const reason = "every write path must be explicit and inside the assigned workspace";
+      const reason = "every write path must be explicit and inside the assigned workspace; a report/output path routed outside the checkout (e.g. an external pi-subagents output directory) must be reassigned to an in-checkout path instead";
       recordPolicyEvent(ledger, { toolName: tool.toolName, action: "blocked", reason });
       return { allowed: false, reason, substantive };
     }

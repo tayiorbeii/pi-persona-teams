@@ -3,6 +3,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { resolvePersonaPath, validatePersonaFile, type PersonaFile } from "./persona-file.ts";
 import { verifyAttestation, readAttestation, type PersonaAttestation } from "./attestation.ts";
 import { providerDoctor, type ProviderObservation, type ProviderToolDescriptor } from "./provider-observer.ts";
+import { isInsideWorkspace } from "./role-policy.ts";
 import type { LaunchedAck } from "./delegation-wait.ts";
 
 export interface PersonaSummary {
@@ -193,6 +194,10 @@ export async function personaDoctor(options: PersonaFacadeOptions): Promise<{
   const personas = listPersonas(options.packageRoot);
   const deficiencies: string[] = [];
   const degraded: string[] = [];
+  const attestationDir = options.attestationDir ?? join(workspace, ".pi-persona", "attestations");
+  if (!isInsideWorkspace(workspace, attestationDir)) {
+    deficiencies.push(`attestation directory (${attestationDir}) resolves outside the assigned workspace (${workspace}); the workspace guard blocks persona writes routed outside the checkout, so external output routing (e.g. a shared pi-subagents report/attestation directory) will fail — point PI_PERSONA_ATTESTATION_DIR, or the attestationDir override, at an in-checkout path instead`);
+  }
   let discoveries: PersonaDiscovery[] = [];
   try {
     discoveries = options.discover ? await options.discover(workspace) : await discoverThroughPiSubagents(workspace);

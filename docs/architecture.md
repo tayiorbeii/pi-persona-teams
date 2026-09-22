@@ -19,3 +19,11 @@ Agent definitions declare their tool allowlists and child extension. The child r
 ## Acceptance boundary
 
 Persona compliance and ordinary work acceptance are separate. `persona_team` defaults to advisory verification: completed output may be returned with warnings but `accepted`, `ordinaryAccepted`, and `personaAccepted` remain truthful. Strict opt-in accepts a run only when canonical identity and method hashes match a passing host attestation and ordinary pi-subagents acceptance also passes.
+
+## Workspace containment and external output routing
+
+`role-policy.ts` (`isInsideWorkspace`) rejects every write-tool call — report artifacts included — whose resolved path falls outside the workspace the persona was launched into (`process.cwd()` at delegation time, or the `workspace` a facade caller supplies). This is a deliberate containment boundary, not a bug: a persona child must not be able to write outside its assigned checkout, however its host or task configures it.
+
+A host-side tool that independently routes output elsewhere — for example a `pi-subagents` setup (or any other tool sharing the session) configured with a global/shared report or artifact directory outside the current checkout — conflicts with this boundary. The write is blocked with `"every write path must be explicit and inside the assigned workspace"`, surfaced deep in a run rather than at setup time.
+
+The same class of conflict applies to `PI_PERSONA_ATTESTATION_DIR` (or a caller-supplied `attestationDir` override): `persona_team.doctor` resolves the configured attestation directory against the workspace and reports a deficiency, before any run is attempted, when it points outside the checkout. Run `persona_team.doctor` after changing host tooling configuration, and keep every persona-team output path — attestations and task report artifacts alike — inside the checkout. Disable external/global output routing for persona-team runs specifically if the surrounding tooling defaults to one.

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Workspace-guard preflight for external output routing
+
+- `persona_team.doctor` now resolves the configured attestation directory (`PI_PERSONA_ATTESTATION_DIR` or an `attestationDir` override) against the workspace and reports a deficiency when it falls outside the checkout, catching a host tool's external/shared output routing before a run instead of failing deep inside one with a bare workspace-guard rejection.
+- Clarified the workspace-guard rejection reason (`role-policy.ts`) to name the fix directly: reassign an externally-routed report/output path to an in-checkout path.
+- Documented the conflict class and its resolution in `docs/architecture.md` ("Workspace containment and external output routing").
+
 ### Expertise-first verification
 
 - Added advisory (default) and strict opt-in verification policies. Advisory completed runs return useful output with explicit warnings when digest or persona-attestation evidence is missing/mismatched, while formal acceptance booleans remain truthful; strict remains fail-closed. Idempotency keys are isolated by policy.

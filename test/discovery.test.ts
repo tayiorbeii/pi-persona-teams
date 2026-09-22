@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { packagePreflight, personaDoctor } from "../extensions/internal/persona-facade.ts";
 
 const root = join(import.meta.dir, "..");
@@ -30,4 +31,25 @@ test("doctor reports an unauthorized project shadow", async () => {
   ] });
   expect(result.ready).toBe(false);
   expect(result.deficiencies.some((item) => item.includes("shadow"))).toBe(true);
+});
+
+test("doctor flags an attestation directory routed outside the assigned workspace", async () => {
+  const result = await personaDoctor({
+    packageRoot: root,
+    workspace: root,
+    discover: () => canonicalDiscoveries,
+    attestationDir: join(tmpdir(), "external-pi-persona-attestations"),
+  });
+  expect(result.ready).toBe(false);
+  expect(result.deficiencies.some((item) => item.includes("resolves outside the assigned workspace"))).toBe(true);
+});
+
+test("doctor accepts an in-checkout attestation directory", async () => {
+  const result = await personaDoctor({
+    packageRoot: root,
+    workspace: root,
+    discover: () => canonicalDiscoveries,
+    attestationDir: join(root, ".pi-persona", "attestations"),
+  });
+  expect(result.deficiencies.some((item) => item.includes("resolves outside the assigned workspace"))).toBe(false);
 });
