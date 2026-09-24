@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  createSingleFlight,
   discoverThroughPiSubagents,
   listPersonas,
+  loadPiSubagentsPreflight,
   personaDoctor,
   runPersona,
   type DelegationRequest,
@@ -59,6 +61,25 @@ export const PERSONA_CHILD_TIMEOUT_MARGIN_MS = 30_000;
  */
 const pendingDelegations = new Map<string, Promise<DelegationResult>>();
 const launchedAcks = new Map<string, LaunchedAck>();
+
+/** Minimal shape of the pi-subagents delegation constants subpath. */
+interface PiSubagentsDelegationModule {
+  SUBAGENT_DELEGATION_REQUEST_EVENT: string;
+  SUBAGENT_DELEGATION_RESPONSE_EVENT: string;
+  // Older bridges do not export these constants; every usage degrades
+  // gracefully when they are missing.
+  SUBAGENT_DELEGATION_STARTED_EVENT?: string;
+  SUBAGENT_DELEGATION_UPDATE_EVENT?: string;
+  SUBAGENT_DELEGATION_CANCEL_EVENT?: string;
+}
+
+// Single-flight (see createSingleFlight in persona-facade.ts): concurrent
+// first imports of this subpath race JITI module evaluation and can hand one
+// caller a partially initialized namespace.
+const loadPiSubagentsDelegation: () => Promise<PiSubagentsDelegationModule> = createSingleFlight(() => {
+  const delegationName: string = "pi-subagents/delegation";
+  return import(delegationName) as Promise<PiSubagentsDelegationModule>;
+});
 
 function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -146,30 +167,27 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
   const task = verificationPolicy === "strict"
     ? `${request.task}\n\nStrict verification requested: collect persona_contract.status, activate and disposition each required method, then complete with host-verifiable evidence.`
     : request.task;
-  const preflightName: string = "pi-subagents/preflight";
-  const preflight = await import(preflightName) as {
-    resolveSubagentLaunchContract?: (input: Record<string, unknown>) => Promise<{
-      ok: boolean;
-      message?: string;
-      contract?: {
-        launchContractDigest?: string;
-        digest?: string;
-        tools?: {
-          toolExtensionPaths?: string[];
-          runtimeExtensions?: string[];
-          configuredExtensions?: string[];
-        };
-      };
-    }>;
-  };
+  const preflight = await loadPiSubagentsPreflight();
   if (!preflight.resolveSubagentLaunchContract) throw new Error("pi-subagents preflight API is unavailable");
-  const launch = await preflight.resolveSubagentLaunchContract({
+  const launch = (await preflight.resolveSubagentLaunchContract({
     agent: request.agent,
     task,
     context: request.context,
     cwd: workspace,
     availableModels: typeof pi.modelRegistry?.getAvailable === "function" ? pi.modelRegistry.getAvailable() : [],
-  });
+  })) as {
+    ok: boolean;
+    message?: string;
+    contract?: {
+      launchContractDigest?: string;
+      digest?: string;
+      tools?: {
+        toolExtensionPaths?: string[];
+        runtimeExtensions?: string[];
+        configuredExtensions?: string[];
+      };
+    };
+  };
   if (!launch.ok || !launch.contract) throw new Error(launch.message ?? "persona launch preflight failed");
   const expectedLaunchContractDigest = launch.contract.launchContractDigest ?? launch.contract.digest;
   if (!expectedLaunchContractDigest && verificationPolicy === "strict") throw new Error("pi-subagents preflight returned a launch contract without launchContractDigest");
@@ -182,16 +200,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     throw new Error("persona-child enforcement extension is absent from the resolved launch contract");
   }
 
-  const delegationName: string = "pi-subagents/delegation";
-  const delegation = await import(delegationName) as {
-    SUBAGENT_DELEGATION_REQUEST_EVENT: string;
-    SUBAGENT_DELEGATION_RESPONSE_EVENT: string;
-    // Older bridges do not export these constants; every usage degrades
-    // gracefully when they are missing.
-    SUBAGENT_DELEGATION_STARTED_EVENT?: string;
-    SUBAGENT_DELEGATION_UPDATE_EVENT?: string;
-    SUBAGENT_DELEGATION_CANCEL_EVENT?: string;
-  };
+  const delegation = await loadPiSubagentsDelegation();
   if (!pi.events || typeof pi.events.on !== "function" || typeof pi.events.emit !== "function") {
     throw new Error("Pi extension event bus is unavailable for pi-subagents delegation");
   }

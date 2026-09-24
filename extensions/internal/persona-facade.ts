@@ -156,11 +156,44 @@ const CANONICAL_RUNTIME_NAMES = [
   "persona-team.retro-ops-manager",
 ] as const;
 
-export async function discoverThroughPiSubagents(cwd: string): Promise<PersonaDiscovery[]> {
+/** Minimal shape of the pi-subagents preflight subpath the facade depends on. */
+export interface PiSubagentsPreflightModule {
+  resolveSubagentLaunchContract?: (input: Record<string, unknown>) => Promise<any>;
+}
+
+/**
+ * Wraps an async loader so concurrent callers share one in-flight attempt.
+ * pi-subagents subpath imports must never race: under pi's JITI extension
+ * loader, two simultaneous first imports of the same bare specifier (e.g. two
+ * persona_team runs dispatched in one parallel tool-call block) can hand one
+ * caller a partially initialized module namespace, surfacing inside
+ * resolveSubagentLaunchContract as "Cannot read properties of undefined
+ * (reading 'resolve')" at its `path.resolve(input.cwd)`. Memoizing the import
+ * promise guarantees a single module evaluation. A rejected attempt clears the
+ * memo so a later caller retries fresh instead of caching the failure forever.
+ */
+export function createSingleFlight<T>(load: () => Promise<T>): () => Promise<T> {
+  let promise: Promise<T> | undefined;
+  return () => {
+    if (promise) return promise;
+    const attempt = load().catch((error: unknown) => {
+      if (promise === attempt) promise = undefined;
+      throw error;
+    });
+    promise = attempt;
+    return attempt;
+  };
+}
+
+export const loadPiSubagentsPreflight: () => Promise<PiSubagentsPreflightModule> = createSingleFlight(() => {
   const moduleName: string = "pi-subagents/preflight";
-  let runtime: { resolveSubagentLaunchContract?: (input: Record<string, unknown>) => Promise<any> };
+  return import(moduleName) as Promise<PiSubagentsPreflightModule>;
+});
+
+export async function discoverThroughPiSubagents(cwd: string): Promise<PersonaDiscovery[]> {
+  let runtime: PiSubagentsPreflightModule;
   try {
-    runtime = await import(moduleName);
+    runtime = await loadPiSubagentsPreflight();
   } catch (error) {
     throw new Error(`pi-subagents preflight subpath is unavailable: ${error instanceof Error ? error.message : String(error)}`);
   }
