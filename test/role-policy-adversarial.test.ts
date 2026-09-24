@@ -160,6 +160,47 @@ test("read-only personas can use bounded provider and exactly pinned Octocode re
   expect(runtime.toolCall("bash", { command: "npx -y octocode@18.3.0 tools ghSearchCode --queries '{\"keywords\":[\"unsafe\"]}' --compact" }).allowed).toBe(true);
 });
 
+test("personas can run bounded context-mode execute tools and jDocMunch reads", () => {
+  for (const role of ["staff-reviewer", "implementation-engineer"] as const) {
+    const runtime = activatedRuntime(role);
+    const plan = join(root, "README.md");
+    const analysis = "const lines = FILE_CONTENT.split('\\n'); console.log(lines.filter((line) => line.startsWith('#')).length);";
+    expect(runtime.toolCall("context-mode_ctx_execute_file", { path: plan, language: "javascript", code: analysis }).allowed, role).toBe(true);
+    expect(runtime.toolCall("mcp__context-mode__ctx_execute", { language: "typescript", code: "const rows = [1, 2, 3]; console.log(rows.map((row) => row * 2).join(','));" }).allowed, role).toBe(true);
+    expect(runtime.toolCall("ctx_execute", { language: "shell", code: "git log --oneline -5" }).allowed, role).toBe(true);
+    expect(runtime.toolCall("context-mode_ctx_batch_execute", { commands: [{ label: "status", command: "git status --short" }, { label: "files", command: "rg --files extensions" }], queries: ["policy"] }).allowed, role).toBe(true);
+    expect(runtime.toolCall("jdocmunch_search_sections", { query: "persona" }).allowed, role).toBe(true);
+    expect(runtime.toolCall("mcp__jdocmunch__get_toc", { repo: "local" }).allowed, role).toBe(true);
+  }
+});
+
+test("context-mode execute tools cannot escape read-only authority", () => {
+  const runtime = activatedRuntime("staff-reviewer");
+  const plan = join(root, "README.md");
+  const blocked: Array<[string, Record<string, unknown>]> = [
+    ["context-mode_ctx_execute_file", { path: "/tmp/issues-snapshot.json", language: "javascript", code: "console.log(FILE_CONTENT.length)" }],
+    ["context-mode_ctx_execute_file", { language: "javascript", code: "console.log(1)" }],
+    ["context-mode_ctx_execute_file", { path: plan, language: "javascript", code: "require('fs').writeFileSync('x', '')" }],
+    ["context-mode_ctx_execute_file", { path: plan, language: "javascript", code: "import('node:fs')" }],
+    ["ctx_execute", { language: "javascript", code: "process.exit(1)" }],
+    ["ctx_execute", { language: "javascript", code: "(() => 0).constructor('return 1')()" }],
+    ["ctx_execute", { language: "javascript", code: "const k = ['con', 'structor'].join(''); const f = () => 0; f[k]('x')()" }],
+    ["ctx_execute", { language: "javascript", code: "const k = '\\x63onstructor'; console.log(k)" }],
+    ["ctx_execute", { language: "javascript", code: "Bun.write('x', '')" }],
+    ["ctx_execute", { language: "javascript", code: "fetch('https://example.com')" }],
+    ["ctx_execute", { language: "python", code: "print(1)" }],
+    ["ctx_execute", { code: "malicious()" }],
+    ["ctx_execute", { language: "shell", code: "rm -rf src" }],
+    ["ctx_execute", { language: "shell", code: "cat README.md | tee out.txt" }],
+    ["context-mode_ctx_batch_execute", { commands: [{ label: "ok", command: "git status" }, { label: "bad", command: "git commit -m x" }] }],
+    ["context-mode_ctx_batch_execute", { commands: "git status" }],
+    ["mcp__jdocmunch__index_local", { path: "/" }],
+  ];
+  for (const [toolName, input] of blocked) {
+    expect(runtime.toolCall(toolName, input).allowed, `${toolName} ${JSON.stringify(input)}`).toBe(false);
+  }
+});
+
 test("read-only Octocode access excludes mutable versions, cloning, and unrelated npx execution", () => {
   const runtime = activatedRuntime("staff-reviewer");
   for (const command of [

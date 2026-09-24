@@ -22,10 +22,21 @@ const SHELL_CONTROL_SYNTAX = /[\r\n;&|`<>^]|\$\(|\$\{/;
 const SHELL_INTERPRETER = /(?:^|\s)(?:sh|bash|zsh|dash|fish|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh|python(?:\d+(?:\.\d+)*)?|py|node)(?:\s|$)/i;
 const CONTEXT_MODE_READ_OPERATION = "(?:search|index|fetch_and_index)";
 const JCODEMUNCH_READ_OPERATION = "(?:resolve_repo|plan_turn|search_symbols|search_text|get_symbol_source|get_file_outline|find_references|find_importers|get_blast_radius|get_changed_symbols|get_context_bundle|get_ranked_context|assemble_task_context|index_file|index_repo)";
+const JDOCMUNCH_READ_OPERATION = "(?:search_sections|get_toc|get_toc_tree|get_section|get_sections|get_document_outline)";
 const APPROVED_PROVIDER_READ_TOOL = new RegExp(
-  `^(?:ctx_${CONTEXT_MODE_READ_OPERATION}|context[-_]?mode_(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|jcodemunch_${JCODEMUNCH_READ_OPERATION}|mcp__(?:context[-_]?mode)__(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp__jcodemunch__(?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|mcp:(?:context[-_]?mode)[:/](?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp:jcodemunch[:/](?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION})$`,
+  `^(?:ctx_${CONTEXT_MODE_READ_OPERATION}|context[-_]?mode_(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|jcodemunch_${JCODEMUNCH_READ_OPERATION}|mcp__(?:context[-_]?mode)__(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp__jcodemunch__(?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|mcp:(?:context[-_]?mode)[:/](?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp:jcodemunch[:/](?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|jdocmunch_${JDOCMUNCH_READ_OPERATION}|mcp__jdocmunch__(?:jdocmunch_)?${JDOCMUNCH_READ_OPERATION}|mcp:jdocmunch[:/](?:jdocmunch_)?${JDOCMUNCH_READ_OPERATION})$`,
   "i",
 );
+// context-mode execute tools run caller-supplied code, so they are gated by input rather than by name:
+// shell code and batch commands pass the same shell gate as `bash`; JS/TS analysis code must stay
+// inside a static capability screen and may only read files inside the assigned workspace.
+const CONTEXT_MODE_EXECUTE_TOOL = /^(?:ctx_|context[-_]?mode_(?:ctx_)?|mcp__context[-_]?mode__(?:ctx_)?|mcp:context[-_]?mode[:/](?:ctx_)?)(execute_file|execute|batch_execute)$/i;
+const ANALYSIS_LANGUAGE = /^(?:javascript|js|typescript|ts)$/i;
+const SHELL_LANGUAGE = /^(?:shell|sh|bash|zsh)$/i;
+// Screens out host capabilities (modules, process, network, timers, code evaluation) and the usual
+// routes to them (constructor/prototype walks, computed calls, escaped or char-code-built names).
+// This is a guardrail for persona behavior, not an isolation boundary against a hostile author.
+const UNSAFE_ANALYSIS_CODE = /\b(?:require|import|process|Bun|Deno|globalThis|global|module|exports|eval|Function|AsyncFunction|GeneratorFunction|constructor|prototype|__proto__|__defineGetter__|__lookupGetter__|Reflect|Proxy|WebAssembly|fetch|XMLHttpRequest|WebSocket|Worker|SharedArrayBuffer|Atomics|setTimeout|setInterval|setImmediate|queueMicrotask|getPrototypeOf|setPrototypeOf|getOwnPropertyDescriptors?|defineProperty|fromCharCode|fromCodePoint|atob|btoa)\b|\b(?:self|window)\s*[.[]|\bwith\s*\(|\\[ux]|\]\s*[(`]/;
 const OCTOCODE_READ_COMMAND = /^npx\s+-y\s+octocode@18\.3\.0\s+(?:--help|status(?:\s+--json)?|auth\s+status|tools\s+(?:ghSearchCode|ghGetFileContent|ghViewRepoStructure|ghSearchRepos|ghSearchPullRequests|ghSearchIssues|ghSearchCommits|npmSearch)(?:\s+--scheme|\s+--queries\s+.+?(?:\s+--(?:json|compact))?)?)\s*$/i;
 const RUST_VALIDATION_COMMAND = /^(?:cargo\s+(?:\+\S+\s+)?--version|rustc\s+--version|cargo\s+(?:\+\S+\s+)?(?:test|check|clippy|build|metadata|tree)(?:\s+.*)?|cargo\s+(?:\+\S+\s+)?fmt(?=[^\r\n]*--check(?:\s|$))(?:\s+.*)?)$/i;
 const CARGO_COMMAND = /^cargo(?:\s|$)/i;
@@ -117,6 +128,44 @@ function commandAllowedForImplementation(command: string): boolean {
   return commandAllowedForReadOnly(trimmed);
 }
 
+function shellAllowedForAuthority(authority: string, command: string): boolean {
+  return authority === "implementation-writer" ? commandAllowedForImplementation(command) : commandAllowedForReadOnly(command);
+}
+
+function evaluateContextModeExecute(operation: string, input: Record<string, unknown>, workspace: string, authority: string): { allowed: boolean; reason: string } {
+  if (operation === "batch_execute") {
+    const commands = input.commands;
+    if (commands !== undefined && !Array.isArray(commands)) return { allowed: false, reason: "context-mode batch commands must be a list of {label, command}" };
+    for (const entry of (commands ?? []) as unknown[]) {
+      const command = entry && typeof entry === "object" ? (entry as Record<string, unknown>).command : undefined;
+      if (typeof command !== "string" || !shellAllowedForAuthority(authority, command)) {
+        return { allowed: false, reason: `context-mode batch command is outside this role's shell boundary: ${String(command).slice(0, 80)}` };
+      }
+    }
+    return { allowed: true, reason: "context-mode batch within the role's shell boundary" };
+  }
+
+  if (operation === "execute_file") {
+    const path = input.path;
+    if (typeof path !== "string" || path.trim() === "" || !isInsideWorkspace(workspace, path)) {
+      return { allowed: false, reason: "context-mode execute_file path must be explicit and inside the assigned workspace; ask the parent to place handoff inputs (issue snapshots, plans) inside the checkout rather than /tmp" };
+    }
+  }
+
+  const language = typeof input.language === "string" ? input.language.trim() : "";
+  const code = typeof input.code === "string" ? input.code : "";
+  if (!code.trim()) return { allowed: false, reason: "context-mode execute requires explicit code" };
+  if (SHELL_LANGUAGE.test(language)) {
+    return shellAllowedForAuthority(authority, code)
+      ? { allowed: true, reason: "context-mode shell code within the role's shell boundary" }
+      : { allowed: false, reason: "context-mode shell code is outside this role's shell boundary; use a single bounded read-only command" };
+  }
+  if (!ANALYSIS_LANGUAGE.test(language)) return { allowed: false, reason: "context-mode execute is limited to javascript/typescript analysis or bounded shell commands" };
+  const unsafe = code.match(UNSAFE_ANALYSIS_CODE)?.[0];
+  if (unsafe) return { allowed: false, reason: `context-mode analysis code may only transform provided data; disallowed capability: ${unsafe.slice(0, 40)}` };
+  return { allowed: true, reason: "context-mode pure analysis code" };
+}
+
 export function isSubstantiveCall(tool: ToolCall): boolean {
   if (tool.toolName === "persona_contract" || tool.toolName === "persona_contract.activate" || tool.toolName === "persona_contract.status") return false;
   if (/^(?:provider_status|context_mode\.available|jcodemunch\.available)$/.test(tool.toolName)) return false;
@@ -140,6 +189,12 @@ export function evaluateToolCall(
   const input = tool.input ?? {};
   if (tool.toolName === "persona_contract" || tool.toolName.startsWith("persona_contract.")) return { allowed: true, reason: "persona protocol tool", substantive: false };
   if (APPROVED_PROVIDER_READ_TOOL.test(tool.toolName)) return { allowed: true, reason: "approved read-only provider operation", substantive };
+  const executeOperation = tool.toolName.match(CONTEXT_MODE_EXECUTE_TOOL)?.[1]?.toLowerCase();
+  if (executeOperation) {
+    const decision = evaluateContextModeExecute(executeOperation, input, workspace, ledger.authority);
+    recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: summarizeInput(input), action: decision.allowed ? "allowed" : "blocked", reason: decision.reason });
+    return { ...decision, substantive };
+  }
   if (FINALIZATION_TOOL.test(tool.toolName)) {
     recordPolicyEvent(ledger, { toolName: tool.toolName, action: "allowed", reason: "structured finalization after mandatory method activation" });
     return { allowed: true, reason: "structured finalization after mandatory method activation", substantive };
