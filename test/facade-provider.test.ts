@@ -38,7 +38,7 @@ test("facade accepts only dual persona and ordinary acceptance", async () => {
     cwd: root,
     childExtension: join(root, "extensions", "persona-child.ts"),
   }));
-  // pi-subagents 0.47.1 does not propagate the parent digest into the child environment.
+  // pi-subagents 0.60.0 does not propagate the parent digest into the child environment.
   const identity = { runtimeName: "persona-team.engineering-manager", runId: "facade-run", childIndex: 0 };
   const child = new PersonaChildRuntime({ identity, personaPath: em, workspace: root, attestationDir: join(root, ".tmp-attestations") });
   expect(child.handle({ action: "status" }).ok).toBe(true);

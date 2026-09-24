@@ -1,8 +1,8 @@
 diff --git a/node_modules/pi-subagents/src/runs/background/subagent-runner.ts b/node_modules/pi-subagents/src/runs/background/subagent-runner.ts
-index 8ed367a..a352b4b 100644
+index 685f99a..3afe541 100644
 --- a/node_modules/pi-subagents/src/runs/background/subagent-runner.ts
 +++ b/node_modules/pi-subagents/src/runs/background/subagent-runner.ts
-@@ -539,6 +539,18 @@ function runPiStreaming(
+@@ -635,6 +635,18 @@ function runPiStreaming(
  		onWriterProcess?.({ state: "spawning" });
  		const outputStream = fs.createWriteStream(outputFile, { flags: "w" });
  		const spawnEnv = { ...process.env, ...(env ?? {}), ...getSubagentDepthEnv(maxSubagentDepth) };
@@ -22,10 +22,10 @@ index 8ed367a..a352b4b 100644
  			...(piPackageRoot ? { piPackageRoot } : {}),
  			...(piArgv1 ? { argv1: piArgv1 } : {}),
 diff --git a/node_modules/pi-subagents/src/runs/foreground/execution.ts b/node_modules/pi-subagents/src/runs/foreground/execution.ts
-index 8187203..1241815 100644
+index aba6142..bae1d7f 100644
 --- a/node_modules/pi-subagents/src/runs/foreground/execution.ts
 +++ b/node_modules/pi-subagents/src/runs/foreground/execution.ts
-@@ -461,6 +461,13 @@ async function runSingleAttempt(
+@@ -556,6 +556,13 @@ async function runSingleAttempt(
  		return result;
  	}
  	const spawnEnv = { ...process.env, ...sharedEnv, ...getSubagentDepthEnv(options.maxSubagentDepth) };
@@ -36,6 +36,6 @@ index 8187203..1241815 100644
 +	spawnEnv.PWD = __effectiveCwd;
 +	spawnEnv.CONTEXT_MODE_PROJECT_DIR = __effectiveCwd;
 +	spawnEnv.CLAUDE_PROJECT_DIR = __effectiveCwd;
+ 	const mutationSnapshot = snapshotTrackedMutations(options.cwd ?? runtimeCwd);
  	let observedMutationAttempt = false;
  	let structuredOutputToolInvoked = false;
- 	let structuredOutputMessageStartIndex: number | undefined;

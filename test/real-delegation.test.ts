@@ -80,7 +80,7 @@ test("persona_team accepts a real-shaped child through the installed pi-subagent
       }
       const completed = child.handle({ action: "complete", outputSummary: "Produced the bounded plan." });
       if (!completed.ok || !completed.attestationPath || !completed.attestation) throw new Error(completed.message);
-      // pi-subagents 0.47.1 exposes the parent launch digest in the response
+      // pi-subagents 0.60.0 exposes the parent launch digest in the response
       // details, while this real child environment has no digest field.
       if (completed.attestation.launchContractDigest !== undefined) throw new Error("child unexpectedly received a launch digest");
 

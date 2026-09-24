@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Single pi-subagents runtime and gated context-mode execution
+
+- Moved the pi-subagents peer range to `>=0.60.0 <0.61.0` so the package resolves the same pi-subagents that pi loads globally, replacing the 0.47.1 patch with the matching 0.60.0 project-root env reset patch. Pinned the pi runtime packages (`0.84.4`) as dev dependencies so the 0.60.0 preflight's `pi-tui` import resolves in tests.
+- `ctx_execute`, `ctx_execute_file`, and `ctx_batch_execute` are gated by input instead of blocked by name: shell code and batches pass the read-only command gate (batches need 1-8 labeled commands), JS/TS analysis passes a static capability screen, and file paths and `cwd` stay inside the workspace. jDocMunch reads and workspace-scoped `intercom list-cwd` are allowed.
+- Persona prompts describe those bounds up front.
+
 ### Workspace-guard preflight for external output routing
 
 - `persona_team.doctor` now resolves the configured attestation directory (`PI_PERSONA_ATTESTATION_DIR` or an `attestationDir` override) against the workspace and reports a deficiency when it falls outside the checkout, catching a host tool's external/shared output routing before a run instead of failing deep inside one with a bare workspace-guard rejection.
