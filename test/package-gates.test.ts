@@ -34,7 +34,15 @@ test("package metadata and dry-run archive expose the installable runtime", () =
   expect(manifest.name).toBe("pi-persona-teams");
   expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
   expect(manifest.pi.extensions).toEqual(["./extensions/persona-parent.ts"]);
-  expect(manifest.pi.skills).toEqual(["./skills/persona-team"]);
+  expect(manifest.pi.skills).toEqual([
+    "./skills/persona-team",
+    ...readdirSync(join(root, "skills"), { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory() && dirent.name !== "persona-team")
+      .map((dirent) => dirent.name)
+      .sort()
+      .map((name) => `./skills/${name}`),
+  ]);
+  expect(manifest.pi.skills.length).toBe(87);
   expect(manifest.pi.subagents.agents).toEqual(["./agents"]);
   expect(Object.keys(manifest.peerDependencies).sort()).toEqual(["@earendil-works/pi-coding-agent", "pi-subagents"]);
   expect(manifest.peerDependencies["@earendil-works/pi-coding-agent"]).toMatch(/\S+/);
@@ -55,9 +63,13 @@ test("package metadata and dry-run archive expose the installable runtime", () =
     "scripts/verify-no-shared-corpus.ts",
     "schemas/persona-attestation.v1.json",
     "skills/persona-team/SKILL.md",
+    "skills/vendor-manifest.json",
+    "skills/gstack-review/SKILL.md",
+    "skills/clean-architecture/SKILL.md",
+    "skills/clean-architecture/references/dependency-rule.md",
   ]));
   expect(files.some((file) => file.startsWith("test/") || file.startsWith("plans/") || file.startsWith(".tmp-attestations/"))).toBe(false);
-});
+}, 30_000);
 
 test("package installs from npm pack and rolls back without collateral files", () => {
   const sandbox = mkdtempSync(join(tmpdir(), "persona-package-smoke-"));
@@ -85,4 +97,4 @@ test("package installs from npm pack and rolls back without collateral files", (
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
-});
+}, 30_000);

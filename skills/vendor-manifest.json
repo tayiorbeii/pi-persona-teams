@@ -1,0 +1,3472 @@
+{
+  "schemaVersion": 1,
+  "aggregate": {
+    "repo": "tayiorbeii/paperclip-factory-kit",
+    "commit": "86038facb8be556bf66fd945271eff2c51308fd1",
+    "root": "skills/"
+  },
+  "origins": {
+    "wondel": {
+      "repo": "wondelai/skills",
+      "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+    },
+    "gstack": {
+      "repo": "garrytan/gstack",
+      "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+    }
+  },
+  "adaptation": {
+    "piGstackVersion": 1,
+    "transform": "scripts/skill-adaptations/pi-gstack-v1.ts"
+  },
+  "entryCount": 86,
+  "entries": [
+    {
+      "slug": "37signals-way",
+      "family": "wondel",
+      "destination": "skills/37signals-way/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "37signals-way/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 24688,
+      "packagedSha256": "9f817a6914edd18d26e344d1fc2860b3d9588a220531a2ef19910f878ceb11f2",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/betting-cycles.md",
+          "byteCount": 12904,
+          "sha256": "613d9ed557da859bafd967af8bbcc48edc01bf55d0183525f64e05d0fda3623e"
+        },
+        {
+          "path": "references/build-less.md",
+          "byteCount": 11201,
+          "sha256": "48500268ff95fdce54974d40eb552ae132acea24a13071b06c3adbe25aef1887"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 15873,
+          "sha256": "50625bc95946c218d08b3bdc1f887c2b167c372facb67c736d3c80376f89a23e"
+        },
+        {
+          "path": "references/opinionated-software.md",
+          "byteCount": 14139,
+          "sha256": "f1eb37b97d01672b983ae9c346810b4e9f01efb2baec928227334fd9c52db951"
+        },
+        {
+          "path": "references/shaping-work.md",
+          "byteCount": 13984,
+          "sha256": "fecc4fa39c2687325ff0c94b15071f28fca71c1858c842fb6f03b6b49699c34d"
+        },
+        {
+          "path": "references/small-teams-execution.md",
+          "byteCount": 13979,
+          "sha256": "5d625f4a9f59e938034546f6447631c6e3b27e194c81849717bc9af1e9584915"
+        },
+        {
+          "path": "references/ux-ui-copy.md",
+          "byteCount": 15491,
+          "sha256": "2508245ab77dd66b8ef3a48dcb16a78e08c0896fc1431cd61327f966991e035b"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 8,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "blue-ocean-strategy",
+      "family": "wondel",
+      "destination": "skills/blue-ocean-strategy/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "blue-ocean-strategy/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 17783,
+      "packagedSha256": "cb7687daa2db7c09e244bd526241d4f570d1287cbd7d5290e247c1e3452ca322",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/blue-ocean-examples.md",
+          "byteCount": 17565,
+          "sha256": "4305e9207c3161fbfdde184a9559c91a1baba2785c9169fc6ddf6f5b291ab97e"
+        },
+        {
+          "path": "references/errc-grid.md",
+          "byteCount": 19392,
+          "sha256": "4bce9aa06b218e34c972d9b5fda06cac9b520e677a35616af20c208e586da660"
+        },
+        {
+          "path": "references/implementation.md",
+          "byteCount": 21819,
+          "sha256": "f0f3d8066283992abf0864028faaa62e6a47d169d549024289a5360fb0066d56"
+        },
+        {
+          "path": "references/non-customers.md",
+          "byteCount": 18122,
+          "sha256": "b529f83c28155534af679ef0592909e2fd9f55ad26bda78d4a69ecef268de4a2"
+        },
+        {
+          "path": "references/sequence.md",
+          "byteCount": 18965,
+          "sha256": "97b3500baa20b42db2e4b6e4f4754939c0a45f6bef353f04f9bc4f6a7036092a"
+        },
+        {
+          "path": "references/six-paths.md",
+          "byteCount": 21789,
+          "sha256": "f9e23e771081880d2fbf97df0fe5f65cc9d1903af38fe16ed5d68a463e8a3ca8"
+        },
+        {
+          "path": "references/strategy-canvas.md",
+          "byteCount": 17161,
+          "sha256": "975f9b488df634f5365b759360af6c9784d8332bd67c0ef93c0f6b91fb2a85b4"
+        },
+        {
+          "path": "references/value-innovation.md",
+          "byteCount": 14062,
+          "sha256": "b5f3ba6be013870bb1e255e0695005e03043ceb4d95dc2f4e45e584634d57ff5"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 9,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "clean-architecture",
+      "family": "wondel",
+      "destination": "skills/clean-architecture/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "clean-architecture/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20920,
+      "packagedSha256": "248146941bdb4992a61e6221cd2b1505d7828277548e715af424ae081f3566cf",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/adapters-frameworks.md",
+          "byteCount": 15892,
+          "sha256": "548cf58a878f29b3f6cd2b74f0e355a213c23cc757a0ad858f086ba77d9ec8e1"
+        },
+        {
+          "path": "references/boundaries.md",
+          "byteCount": 18349,
+          "sha256": "a5eb0efa34d4e42cc8b6f6ab0f23b08acfb3ad2efa94094a6548f2e129066805"
+        },
+        {
+          "path": "references/component-principles.md",
+          "byteCount": 12777,
+          "sha256": "fcf09d8d24a5eaa45050d328252d18357f7eaa137737f867860a421bbe3bfa5c"
+        },
+        {
+          "path": "references/dependency-rule.md",
+          "byteCount": 13578,
+          "sha256": "6f95edd35d9934d7151e30ce1676e52d0a45d41daa97c4ebeb4e085b62ce2be9"
+        },
+        {
+          "path": "references/entities-use-cases.md",
+          "byteCount": 14750,
+          "sha256": "8304bd7c89284b711e8756d210580cae095df6e702abcdd35ae066ddde981ff0"
+        },
+        {
+          "path": "references/solid-principles.md",
+          "byteCount": 16938,
+          "sha256": "d39b63f6dbe89698ab18e1acf765cd8333db4beeb1e0afac01e9b945db57a2d2"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "clean-code",
+      "family": "wondel",
+      "destination": "skills/clean-code/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "clean-code/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19739,
+      "packagedSha256": "99eae0a967e53072dc9bfe7f883c140c4f9c533b0966f919dd4a695022afb0d4",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/code-smells.md",
+          "byteCount": 16344,
+          "sha256": "e260cc3f5890ba3078d4cabb895b728f4261b727555016a49a2dee19a4edb1d1"
+        },
+        {
+          "path": "references/comments-formatting.md",
+          "byteCount": 12797,
+          "sha256": "5251598986f088707236b041a8fd9c8c6df10f1bab087b2ab357ed5e4ed1bc36"
+        },
+        {
+          "path": "references/error-handling.md",
+          "byteCount": 12640,
+          "sha256": "567e8f6df07486eb49d2bc825c85990e8b2bbeebc7c10cf9eb6e7f220b23c383"
+        },
+        {
+          "path": "references/functions-and-methods.md",
+          "byteCount": 12617,
+          "sha256": "888357a4c5608fbf078dd132551c60d0f0c51efcca0d5efaaaeaafec43590e77"
+        },
+        {
+          "path": "references/naming-conventions.md",
+          "byteCount": 11258,
+          "sha256": "f0d8120424acf6ac87bf6ad764c88fed7da323e441d5c36e767e28ce3feabc93"
+        },
+        {
+          "path": "references/testing-principles.md",
+          "byteCount": 12946,
+          "sha256": "af7824113e2338fae75dac83bd2a3afdad8dcb4ba379c734f2ee7ad8566a4663"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "contagious",
+      "family": "wondel",
+      "destination": "skills/contagious/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "contagious/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 25989,
+      "packagedSha256": "c81c9fe3b621d593b577f88072f3708672d4169ba9e5d92a41d4dc7057c3f4fe",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 21556,
+          "sha256": "5f3dff4f93043f4139af99ebbfeb6fb6ea4a5c822ec3e1823c6d516c66d591fe"
+        },
+        {
+          "path": "references/emotion.md",
+          "byteCount": 13677,
+          "sha256": "535a478e43060836761b25d0a672540e3e53b254aedea167dd4176f5bce5be7d"
+        },
+        {
+          "path": "references/practical-value.md",
+          "byteCount": 13440,
+          "sha256": "dccc572f7ae2639439f45ae87ee09760a1ce0ee3d97c4c28b036c33e380a6a3e"
+        },
+        {
+          "path": "references/public-visibility.md",
+          "byteCount": 15406,
+          "sha256": "da47f1937460e9a001534ec79979b5ce740e242772c91b476eaa8d145d81ca65"
+        },
+        {
+          "path": "references/social-currency.md",
+          "byteCount": 12227,
+          "sha256": "76339309b5bd3a6d32421351fdd25a7c751dae29392443d242f4ba5a63b5ee09"
+        },
+        {
+          "path": "references/stories-trojan-horse.md",
+          "byteCount": 14341,
+          "sha256": "4d958f3612f60726d0274efcf668fe6a84ebe3426572dd0e90e366b535b162c2"
+        },
+        {
+          "path": "references/triggers.md",
+          "byteCount": 12921,
+          "sha256": "c527fa213133acda718e62537a431ff454f9e05601c8774e0a94ddf238f83ed2"
+        },
+        {
+          "path": "references/viral-content-patterns.md",
+          "byteCount": 15250,
+          "sha256": "5e56ee3418f34a196b2e35c55fc8a2721ab5d5d12e0d7c7f925fca0c88f16523"
+        },
+        {
+          "path": "references/word-of-mouth.md",
+          "byteCount": 14065,
+          "sha256": "f0583b01cb636a6fdb181720316b3a0fd1bd3ccb3641c9f14fd05b4522ff4923"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 10,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "continuous-discovery",
+      "family": "wondel",
+      "destination": "skills/continuous-discovery/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "continuous-discovery/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19551,
+      "packagedSha256": "8b622a3829af41f59bdf3c15029b293b186d9d1177669869ddc81e41cd33b1c1",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/assumption-mapping.md",
+          "byteCount": 14288,
+          "sha256": "d7af13b9c027d96a716562a92c4f4d5272d2a77a465a0f0abaa8cde253ff9340"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 18814,
+          "sha256": "fe16d19696145d00a7df863a2d52264da7286083de1b1a4db59e5267dad082e6"
+        },
+        {
+          "path": "references/experience-mapping.md",
+          "byteCount": 15306,
+          "sha256": "3e9ae975233adc7f8478b199518aa81c620c129872a95de543c3871314f6e597"
+        },
+        {
+          "path": "references/interview-snapshots.md",
+          "byteCount": 15185,
+          "sha256": "3806b3cb32cab0b2d47254f19d67f8cde9371569d883e0161eed09089260848d"
+        },
+        {
+          "path": "references/opportunity-trees.md",
+          "byteCount": 10725,
+          "sha256": "ee7f3e4b5c15689e0a6389a6585a7878e1ed45252fc1132a62005091d03c1c5d"
+        },
+        {
+          "path": "references/prioritization-methods.md",
+          "byteCount": 14741,
+          "sha256": "71b7322f7899e1b63b860843c7da9661fdab5aec3f4f8c19aff9bb53a034e156"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "cro-methodology",
+      "family": "wondel",
+      "destination": "skills/cro-methodology/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "cro-methodology/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 22895,
+      "packagedSha256": "f3e6c3d4a55d15e9fe7e347958986c61e7b40d872f21426a37d386c1b3ed5003",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/COPYWRITING.md",
+          "byteCount": 4026,
+          "sha256": "076943081756ea8e039f04609931cd65718c957f6a226baaabcae79921a90dc0"
+        },
+        {
+          "path": "references/funnel-analysis.md",
+          "byteCount": 11224,
+          "sha256": "f7df0f118e06dd0bd40bdca2a9f3c389af7000bab9a82e71f79a30d5f6896511"
+        },
+        {
+          "path": "references/OBJECTIONS.md",
+          "byteCount": 4033,
+          "sha256": "61ef2cbd8a975dd7095a03971f64ac0fd7a22a8cdb361b026e1a74de5e63faaa"
+        },
+        {
+          "path": "references/PERSUASION.md",
+          "byteCount": 3934,
+          "sha256": "baf108abfa03d516a43448b733bbc35ac4f0cb41f0d185db0b62b97525fc3f42"
+        },
+        {
+          "path": "references/RESEARCH.md",
+          "byteCount": 5342,
+          "sha256": "398476032019cfebc3b557ec4ead0303982585d510bdad90faa3d2dcce27ad66"
+        },
+        {
+          "path": "references/testing-methodology.md",
+          "byteCount": 10247,
+          "sha256": "02f1d19c751bc44bdcd3e9a91a6808ad219312be249b7d1bc1adf16d08b88cb1"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "crossing-the-chasm",
+      "family": "wondel",
+      "destination": "skills/crossing-the-chasm/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "crossing-the-chasm/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 15302,
+      "packagedSha256": "addac254cbb84e672ad7e04fae7769e9e31a1df352e4f71236001930be56eeed",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/b2b-saas.md",
+          "byteCount": 19424,
+          "sha256": "f1932ddc46ce5bc068785415a9266c804d9afaf1a6ec8f461f9fe6b880de4d09"
+        },
+        {
+          "path": "references/beachhead-selection.md",
+          "byteCount": 14009,
+          "sha256": "69fd0c98694b1833f22955180b9dd452f8913527d4e904eeb9ea17a2dee05e33"
+        },
+        {
+          "path": "references/buyer-segments.md",
+          "byteCount": 14176,
+          "sha256": "d816f813662a5a1a720112ac93f6477c58bd216cf927586d809620b45c79e4c9"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 20857,
+          "sha256": "7c7ef164e3c03e57d9ab321e87c7e44a6820cfcedcf90e18f513db8756385867"
+        },
+        {
+          "path": "references/expansion.md",
+          "byteCount": 12995,
+          "sha256": "e027f8593993cc0f47762566f514e90497d9e29f1f66cee211c87a46e6a1276d"
+        },
+        {
+          "path": "references/go-to-market.md",
+          "byteCount": 14209,
+          "sha256": "2b9592547d877cd9e0459f6cf1447daff2f6b5fcd9c7ee50c66441f87665df9e"
+        },
+        {
+          "path": "references/positioning.md",
+          "byteCount": 13318,
+          "sha256": "2c86d85b8eecbced309eb318f5ec035420477a99f0d27e17622d6f3b83c0e9d1"
+        },
+        {
+          "path": "references/whole-product.md",
+          "byteCount": 13459,
+          "sha256": "e5da6ed2ab9cf6e5e2050d7bcbb591c2eeec473807fab470df80b9166c0bfc40"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 9,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "ddia-systems",
+      "family": "wondel",
+      "destination": "skills/ddia-systems/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "ddia-systems/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20537,
+      "packagedSha256": "e08c34e464504dfa7cdb3ad228f6f471afdc6648ab8c5b7bd9395e7b0b258351",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/batch-stream.md",
+          "byteCount": 14302,
+          "sha256": "eec19df1648b655296cde793c582947192784e56cc2c3d1b00da68df6a5e8e81"
+        },
+        {
+          "path": "references/data-models.md",
+          "byteCount": 11808,
+          "sha256": "191e9f8b569dde181cb1c5850d42c437d983e174bad24eafcdc489a71282881c"
+        },
+        {
+          "path": "references/fault-tolerance.md",
+          "byteCount": 15239,
+          "sha256": "5916232f805d9aabe257bfde637fc425d061162b0888b773a8f325d06eaa1604"
+        },
+        {
+          "path": "references/partitioning.md",
+          "byteCount": 11051,
+          "sha256": "bf29b93ad3b6edaa2b5784d8f9c752bfc83a5ca6c764360b383947f265b515d2"
+        },
+        {
+          "path": "references/replication.md",
+          "byteCount": 10958,
+          "sha256": "b727d226c3885064707ac5bc17d9c33f584f10009d5a217b2418f018480171c7"
+        },
+        {
+          "path": "references/storage-engines.md",
+          "byteCount": 11313,
+          "sha256": "2adb7de5d78328122091eebe78e3e0a1a862425694d060a85160e62844b45a9d"
+        },
+        {
+          "path": "references/transactions.md",
+          "byteCount": 13126,
+          "sha256": "9d1b4aa956d5b41c911c75e6320dba5a2ae3266b229fdbb001b89811c03775f8"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 8,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "design-everyday-things",
+      "family": "wondel",
+      "destination": "skills/design-everyday-things/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "design-everyday-things/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20340,
+      "packagedSha256": "ea25b765e23c7fff564ed7be107bc76148de04fb78f0952639355373c092c0bd",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/affordances.md",
+          "byteCount": 13207,
+          "sha256": "b6947e8977a32e323eba9c766a1420ac997a6e31e5cc917f9e24e300af7f639b"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 16231,
+          "sha256": "2b9237ec41756a7439ade737b219539d55b1efec7538c7367112a376b773b964"
+        },
+        {
+          "path": "references/conceptual-models.md",
+          "byteCount": 16061,
+          "sha256": "b0ce2316e8660f5d2cd7008ba6b23ff86b24cc1567128ebdf71ec34c419d6b0e"
+        },
+        {
+          "path": "references/constraints.md",
+          "byteCount": 13886,
+          "sha256": "71d43a2352f50341193fa907667aeb7c0083c5e5a24330737ef4b3be80e9dcae"
+        },
+        {
+          "path": "references/feedback.md",
+          "byteCount": 15517,
+          "sha256": "26deb108c8d31a426a2867968233e6a7bef006eae9f139fb3d41bacf2b806ada"
+        },
+        {
+          "path": "references/human-error.md",
+          "byteCount": 16310,
+          "sha256": "140962b646da3ce8a823202693e90f47717e2806e22dd397eaa5cf18d2452fda"
+        },
+        {
+          "path": "references/mappings.md",
+          "byteCount": 13714,
+          "sha256": "797258033fe3806b82e0178889158e2652e68417c222c06fca594c8272877fb8"
+        },
+        {
+          "path": "references/seven-stages.md",
+          "byteCount": 15091,
+          "sha256": "87398e0a7c56469fed49a1610abbb28bd8b1c3aec4f597d7122a38efe0b7ed78"
+        },
+        {
+          "path": "references/signifiers.md",
+          "byteCount": 14110,
+          "sha256": "0ef65efd21d94bb6a61d731a3284667115edb5052ad6f59076d2d99355530e9a"
+        },
+        {
+          "path": "references/two-gulfs.md",
+          "byteCount": 12282,
+          "sha256": "bfe213515cbc3119d1ff7257ce01443b9d33245e7fdff3f4eeba67c6dce1846a"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 11,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "design-sprint",
+      "family": "wondel",
+      "destination": "skills/design-sprint/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "design-sprint/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 16765,
+      "packagedSha256": "f89d57fb7c1fcf7faa01633c4efe53e77ef82b466e87ea7d61f1d1f24bfc5574",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 21682,
+          "sha256": "1a181661b1d60d5eb1100874aa087d271353028e1cc103ce5634476bbbe4e2ea"
+        },
+        {
+          "path": "references/facilitation.md",
+          "byteCount": 13495,
+          "sha256": "58bcc7aa44060cf211731873419356c60262aa590f9c1a87725df62759403d80"
+        },
+        {
+          "path": "references/friday.md",
+          "byteCount": 13805,
+          "sha256": "7d6e6469498892944066773401c9973aa15338fb590dd4e4d562c665ff48042c"
+        },
+        {
+          "path": "references/monday.md",
+          "byteCount": 12074,
+          "sha256": "2de0d9bbb56c2deefead0b36bab6adfc412b1e51c3d3b0aee2355fc1315fc63f"
+        },
+        {
+          "path": "references/recruiting.md",
+          "byteCount": 13059,
+          "sha256": "c73ba742d81de89fa3ad2172604fb06f120549b2d144728b4e0b52146a7b2adc"
+        },
+        {
+          "path": "references/remote-sprints.md",
+          "byteCount": 16477,
+          "sha256": "06c4775b320111bae74aba1f7b5cef955967c7759e97a07a346a3f5a75155473"
+        },
+        {
+          "path": "references/thursday.md",
+          "byteCount": 12204,
+          "sha256": "6339b3532617025fadfac5765a18a4df421ff3656b755b010adcee919a8a23f0"
+        },
+        {
+          "path": "references/tuesday.md",
+          "byteCount": 11657,
+          "sha256": "1cc1ec7a8f4790f1e22c087b616dd901308a917c7db9fde75f7c4ec324b87687"
+        },
+        {
+          "path": "references/wednesday.md",
+          "byteCount": 11765,
+          "sha256": "bfec5d270d8dcb1cf0626c8f0bd0be616417bbc1d9cace04925784b66eb069c4"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 10,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "domain-driven-design",
+      "family": "wondel",
+      "destination": "skills/domain-driven-design/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "domain-driven-design/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19385,
+      "packagedSha256": "6352d45678505d457c43d98dea05397b8274fab3b5a22fcc6397969fa668308e",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/bounded-contexts.md",
+          "byteCount": 13416,
+          "sha256": "5b87502afdef850c0262fc31f6c671519140298ceca50f5a5173a2e5419264fc"
+        },
+        {
+          "path": "references/building-blocks.md",
+          "byteCount": 13401,
+          "sha256": "b78f51c8ec8c5537420597df6e7e85899e36abf6ac91dc44699a3f5505c003d4"
+        },
+        {
+          "path": "references/domain-events.md",
+          "byteCount": 12063,
+          "sha256": "6f924b9bb9eea2fbde210a55645d825d8d8a177adf64d2cb590523eb99482be8"
+        },
+        {
+          "path": "references/repositories-factories.md",
+          "byteCount": 15387,
+          "sha256": "674e197968fb60eec232188895787291fba68e657f33e1417143990629c5c645"
+        },
+        {
+          "path": "references/strategic-design.md",
+          "byteCount": 14536,
+          "sha256": "a1d5c69fdfbf809a2410d9a438d814aefe33187d01093940c2385f7daef1a2d1"
+        },
+        {
+          "path": "references/ubiquitous-language.md",
+          "byteCount": 12660,
+          "sha256": "152bbfd4f7467371d9399dc0e9b27624da3b82b356bbe96ee111f000ca3993e8"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "drive-motivation",
+      "family": "wondel",
+      "destination": "skills/drive-motivation/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "drive-motivation/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 16579,
+      "packagedSha256": "92a4320b242433f839f5428c3980bc03b2b59aefb6361487a891b9310018bfa4",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/applications.md",
+          "byteCount": 17021,
+          "sha256": "99c5174c56effd819c70542f3772ae87f2d91ecf7fbdb3b75b2a63d648226d3f"
+        },
+        {
+          "path": "references/autonomy.md",
+          "byteCount": 12915,
+          "sha256": "c9ddfa7deb1150bc067c96d9fd682bc236182ffad05f0570adc6ba74d9305b14"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 14314,
+          "sha256": "5c710ba3cbbd9cd2c620400060e055447aa46be57e8ae10cbc1af00647a8dc40"
+        },
+        {
+          "path": "references/extrinsic-rewards.md",
+          "byteCount": 14983,
+          "sha256": "35215e5c87a00b7d1906f9ff9db24b7e4d66713fb1bdd27c2b59357e417df02d"
+        },
+        {
+          "path": "references/mastery.md",
+          "byteCount": 14755,
+          "sha256": "4ac0e6891d43e1ce0e8bc0797fee91c50c795b8ec318b47bad09b8b24eb72684"
+        },
+        {
+          "path": "references/purpose.md",
+          "byteCount": 14774,
+          "sha256": "618d32926cbc435ac7c47f33543e4795523bb9ec54e2242f0912f09ecae1dd49"
+        },
+        {
+          "path": "references/type-i.md",
+          "byteCount": 15984,
+          "sha256": "13b7c98620da85614f628a8719324ce130efda4fa3c09bbc2ec6e2bebab8566c"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 8,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-autoplan",
+      "family": "gstack",
+      "destination": "skills/gstack-autoplan/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-autoplan/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 86961,
+      "packagedSha256": "95eaade4bf9b79002b7f2e979e516660c660f505bca67179f30f10ebf412a3f1",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-benchmark",
+      "family": "gstack",
+      "destination": "skills/gstack-benchmark/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-benchmark/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 30255,
+      "packagedSha256": "597d5467450c985c7eb05858d8f289739a43ea12cee718c5525ecaf7aebec4e9",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-benchmark-models",
+      "family": "gstack",
+      "destination": "skills/gstack-benchmark-models/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-benchmark-models/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 26350,
+      "packagedSha256": "601ec35c02cf7af343cc4f223162c1e347ae9e3ca2acf0e0da0c324799623843",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-browse",
+      "family": "gstack",
+      "destination": "skills/gstack-browse/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-browse/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 45023,
+      "packagedSha256": "dce51585f926ceb2db279be7e3aa10b12a3630489153ea4e1345bd49b6b21e2f",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-canary",
+      "family": "gstack",
+      "destination": "skills/gstack-canary/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-canary/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 43217,
+      "packagedSha256": "5c3f287274f93d7da449c83f4c13c775b96b1583444d0631ad7025a8af92a2d4",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-careful",
+      "family": "gstack",
+      "destination": "skills/gstack-careful/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-careful/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 4216,
+      "packagedSha256": "14c181bb331a2e5d81b7da38deda98d21a8a38069c5f734aaba68499a27db83a",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-codex",
+      "family": "gstack",
+      "destination": "skills/gstack-codex/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-codex/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 72686,
+      "packagedSha256": "8b9ea6b42c134aeb20f8d5bff5573004f963bb417840188dbc9959f1bdee4120",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-context-restore",
+      "family": "gstack",
+      "destination": "skills/gstack-context-restore/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-context-restore/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 37619,
+      "packagedSha256": "d36fdbe95e6b8ee221ddbec09dd177c123d02124fdf514f8ab427b7839a97418",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-context-save",
+      "family": "gstack",
+      "destination": "skills/gstack-context-save/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-context-save/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 41803,
+      "packagedSha256": "bf8adc31f863c66b126ace8f68844edae7caef951b0157a6f9411a876639c92b",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-cso",
+      "family": "gstack",
+      "destination": "skills/gstack-cso/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-cso/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 71201,
+      "packagedSha256": "cdcaecb07e48f696f86fe86df44bddcb7b374c81e393852b484ca6533d0627a2",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-design-consultation",
+      "family": "gstack",
+      "destination": "skills/gstack-design-consultation/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-design-consultation/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 74642,
+      "packagedSha256": "d0a73d95bdc40410de0f7dd84f073c9ef6eb149d5b9170bc8ba786fdf60d5453",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-design-html",
+      "family": "gstack",
+      "destination": "skills/gstack-design-html/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-design-html/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 62643,
+      "packagedSha256": "610c80e7d8502b443d56d73d55a54a55ac2de8afad24007921c28cdf5c1a625e",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-design-review",
+      "family": "gstack",
+      "destination": "skills/gstack-design-review/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-design-review/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 91736,
+      "packagedSha256": "d25944560e4e934fffaf266e297a5db24931c8b5f926446abb70804cd1e1109d",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-design-shotgun",
+      "family": "gstack",
+      "destination": "skills/gstack-design-shotgun/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-design-shotgun/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 58279,
+      "packagedSha256": "33c9f7b9c9dbd292f5e2307f67bda055d6323d3667121b0b4ed6b334e6f4fd73",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-devex-review",
+      "family": "gstack",
+      "destination": "skills/gstack-devex-review/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-devex-review/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 60514,
+      "packagedSha256": "ebdf7a170f5e0d75e019432a3089ce783c31040c765fb6354cd9eac0b8610c73",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-document-generate",
+      "family": "gstack",
+      "destination": "skills/gstack-document-generate/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-document-generate/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 49094,
+      "packagedSha256": "03dc7ed2ebb270112c4c8d1934a35bd2e182019377a0c5c60d042ea7e79d4583",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-document-release",
+      "family": "gstack",
+      "destination": "skills/gstack-document-release/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-document-release/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 54359,
+      "packagedSha256": "112577039d75bcfd6379a288c449fe4908b6cf165c7c712518ab65602df83912",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-freeze",
+      "family": "gstack",
+      "destination": "skills/gstack-freeze/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-freeze/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 4790,
+      "packagedSha256": "32dd9f0b3ad0e5fb4c6edbad333edfb9fd93e361a05e7b3d28b828805bd5b65b",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-guard",
+      "family": "gstack",
+      "destination": "skills/gstack-guard/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-guard/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 4924,
+      "packagedSha256": "268728b6d40417acbf43489eb4133b055750aa04f69d2db806e336e77654d346",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-health",
+      "family": "gstack",
+      "destination": "skills/gstack-health/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-health/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 44010,
+      "packagedSha256": "1a63796526ff33fd1829111502f61322013ad9b9be2a6f9427987d0a13b72947",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-investigate",
+      "family": "gstack",
+      "destination": "skills/gstack-investigate/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-investigate/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 46095,
+      "packagedSha256": "b763a8940fe6778f02321b4d67c26f9f54d007d2d0d0d6557cdc58f636d3bc51",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-land-and-deploy",
+      "family": "gstack",
+      "destination": "skills/gstack-land-and-deploy/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-land-and-deploy/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 85941,
+      "packagedSha256": "11f99fcd8361a00fabe96fcb73c4f272766354d53589fb9cb449149b960354a3",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-landing-report",
+      "family": "gstack",
+      "destination": "skills/gstack-landing-report/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-landing-report/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 40144,
+      "packagedSha256": "e678eeab918e33e14e5987e7bf286afaaeead05acf17004113c7f80c4c082467",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-learn",
+      "family": "gstack",
+      "destination": "skills/gstack-learn/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-learn/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 37815,
+      "packagedSha256": "5479e4d0e955e81859b849441bb8733d21f1b4ecf547e73b33033b6eea73e5c5",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-make-pdf",
+      "family": "gstack",
+      "destination": "skills/gstack-make-pdf/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-make-pdf/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 26457,
+      "packagedSha256": "bb4bfd475dd4c4cb660f0506d913dc6ee135975249f593906e02c1f56dc66e2c",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-office-hours",
+      "family": "gstack",
+      "destination": "skills/gstack-office-hours/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-office-hours/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 108578,
+      "packagedSha256": "6b5162efe576e1ad24c6a9253ac91759c8e5c6a35fad9d7a22fccc55a53ac553",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-open-gstack-browser",
+      "family": "gstack",
+      "destination": "skills/gstack-open-gstack-browser/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-open-gstack-browser/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 42275,
+      "packagedSha256": "6f205a5e6a33c8f0b7c8d4dccce3edfad3a9b06d3b217c130a92a7e75f185143",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-pair-agent",
+      "family": "gstack",
+      "destination": "skills/gstack-pair-agent/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-pair-agent/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 43076,
+      "packagedSha256": "964a20618d9f8735c8926b9918040f4454daa002720e4e25f80cba440bf749c7",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-plan-ceo-review",
+      "family": "gstack",
+      "destination": "skills/gstack-plan-ceo-review/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-plan-ceo-review/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 127200,
+      "packagedSha256": "779bb1f1f9c847e8c36eb2d0aacbc88614018058d25d79f441cf7cd3fcfd5406",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-plan-design-review",
+      "family": "gstack",
+      "destination": "skills/gstack-plan-design-review/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-plan-design-review/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 101915,
+      "packagedSha256": "75e5c71cd8783067a5ae409e0af9e74cecc7bdabf9fca8985bcb4ebc7d65d9d8",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-plan-devex-review",
+      "family": "gstack",
+      "destination": "skills/gstack-plan-devex-review/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-plan-devex-review/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 100881,
+      "packagedSha256": "fcfc2dd4d889f49532e787136d752ce27ec8828ba446b2de8127200fb32fe98f",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-plan-eng-review",
+      "family": "gstack",
+      "destination": "skills/gstack-plan-eng-review/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-plan-eng-review/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 95441,
+      "packagedSha256": "95f4775091c8d4cfabda3e8d6af6ca13c7e506be12bdff8e7b82ba6574d5dd42",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-plan-tune",
+      "family": "gstack",
+      "destination": "skills/gstack-plan-tune/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-plan-tune/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 47823,
+      "packagedSha256": "fd506ac49cb605e027ed0b64187cf825469be196c85f3545dad70e0a1561e8f9",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-qa",
+      "family": "gstack",
+      "destination": "skills/gstack-qa/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-qa/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 69946,
+      "packagedSha256": "127e3711b700d42fadcb9b8e409742c2c3e9570b0c2b7291a3979ac2dd1cc767",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-qa-only",
+      "family": "gstack",
+      "destination": "skills/gstack-qa-only/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-qa-only/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 52530,
+      "packagedSha256": "4fa5a4e8e87d76b7e713215c25dc555efd6c46edd86717582fe26536235f4b74",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-retro",
+      "family": "gstack",
+      "destination": "skills/gstack-retro/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-retro/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 75424,
+      "packagedSha256": "0333ffe6b4c990cef5670ebcd1e4c43072b83e898f2317fd842d7f45b918adf0",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-review",
+      "family": "gstack",
+      "destination": "skills/gstack-review/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-review/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 87168,
+      "packagedSha256": "2de4428bad758f287c9826d95dac422e18e9e84f707b0bef1de6384168094ca7",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-scrape",
+      "family": "gstack",
+      "destination": "skills/gstack-scrape/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-scrape/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 39774,
+      "packagedSha256": "4a1326a8de6065cf0671e09a93f02502e56afb943b6aa2cc46cbf290aaed62b6",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-setup-browser-cookies",
+      "family": "gstack",
+      "destination": "skills/gstack-setup-browser-cookies/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-setup-browser-cookies/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 23635,
+      "packagedSha256": "dd0ae241af8490892fdd19a966429f1eb573d874a3abfd495e6b5988bc630590",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-setup-deploy",
+      "family": "gstack",
+      "destination": "skills/gstack-setup-deploy/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-setup-deploy/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 40029,
+      "packagedSha256": "c9e6360bb0251031f18b4156e44cb9eba5c3f7391ff6c71aa73c50d546f9af46",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-ship",
+      "family": "gstack",
+      "destination": "skills/gstack-ship/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-ship/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 158473,
+      "packagedSha256": "20223840d5f5bfa41a87657363cbd8f7c5a0a0efaa7d63dc57cdfe0e425f1470",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-skillify",
+      "family": "gstack",
+      "destination": "skills/gstack-skillify/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-skillify/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 49661,
+      "packagedSha256": "6300d16fc584d2e9766657f7b19160da78aaa3eb8d8196a7b7aac110c9ab9037",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-sync-gbrain",
+      "family": "gstack",
+      "destination": "skills/gstack-sync-gbrain/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-sync-gbrain/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 45506,
+      "packagedSha256": "1ed19c3ec6d71a6da5aea4a16adf7863f407c9fd3f9461994ca7d210e15c0b95",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "gstack-unfreeze",
+      "family": "gstack",
+      "destination": "skills/gstack-unfreeze/SKILL.md",
+      "source": {
+        "repo": "garrytan/gstack",
+        "path": "gstack-unfreeze/SKILL.md",
+        "commit": "25cf5edf210fee2cd296ffb2dfb2eff370ebcf35"
+      },
+      "attribution": "gstack / Garry Tan",
+      "license": "MIT",
+      "byteCount": 3176,
+      "packagedSha256": "e1083c8c9415051fde104c69b51851ba5a08314fd4d3a15fd8ac9974ef6e1f4b",
+      "classification": "adapted-pi",
+      "adaptation": {
+        "version": 1,
+        "transform": "pi-gstack-v1",
+        "reviewed": false,
+        "removedAllowedTools": true
+      },
+      "linkClosure": {
+        "markdownFiles": 1,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "high-perf-browser",
+      "family": "wondel",
+      "destination": "skills/high-perf-browser/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "high-perf-browser/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19874,
+      "packagedSha256": "cb6cedba8052f59f5070d9d556063da79b5524f41b7c95eceb9431738088c2c0",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/caching-strategies.md",
+          "byteCount": 11964,
+          "sha256": "373a2d4ae6638199f63439d708178e08135f24797c1152967ec9d27c6a27f90a"
+        },
+        {
+          "path": "references/core-web-vitals.md",
+          "byteCount": 15118,
+          "sha256": "09057e278c872508a97ee461e5281bc26655ec71d36cce57f420c2b4970649f5"
+        },
+        {
+          "path": "references/http-protocols.md",
+          "byteCount": 12620,
+          "sha256": "0590c297349f63b4ba79ddeaac328a4f3ea7df63d5d4d99785b66c68ca6df9af"
+        },
+        {
+          "path": "references/network-fundamentals.md",
+          "byteCount": 10923,
+          "sha256": "0faad835fd46c757f2a079755ee1b33fc82d8a208bc790038c5e4c9acc0ecd17"
+        },
+        {
+          "path": "references/real-time-communication.md",
+          "byteCount": 16321,
+          "sha256": "a741783eeb128b82ae664cb4342c2ac75b3035bfc7273e435438f6336a553e64"
+        },
+        {
+          "path": "references/resource-loading.md",
+          "byteCount": 13934,
+          "sha256": "7eccea4ccedb1f2d638316a71bb9618dd0b69554edfaf8c04fd10db231b1eafe"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "hooked-ux",
+      "family": "wondel",
+      "destination": "skills/hooked-ux/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "hooked-ux/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19627,
+      "packagedSha256": "d071f506e64278704b06e91f602386ba70955993238a88290149775544270209",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 11013,
+          "sha256": "d7810620335850ed17f6ea0757fb7db8af720a22e52cb7337f598e67bd5c39e3"
+        },
+        {
+          "path": "references/ethical-boundaries.md",
+          "byteCount": 9663,
+          "sha256": "58e0d33177f2d9dab690e37d9224e73e49c160b3cfa4f3f8ba2f2f51c958e757"
+        },
+        {
+          "path": "references/habit-testing.md",
+          "byteCount": 6917,
+          "sha256": "641ea5b7baec8922970ad6218c28d189d960a6a28df3ddbdbd0c3ba13bb055d4"
+        },
+        {
+          "path": "references/neuroscience-foundations.md",
+          "byteCount": 7893,
+          "sha256": "22fe8ea41194dc62391e3cfbfa3a656216791aa407205a99b2f440de33b219dd"
+        },
+        {
+          "path": "references/product-applications.md",
+          "byteCount": 10166,
+          "sha256": "65024600cf193b80ef138fadbb300f792b25eaabd53871c6632d31c815a93c9e"
+        },
+        {
+          "path": "references/rewards.md",
+          "byteCount": 7746,
+          "sha256": "e3386a3fce1c4fec390ce6109b51f9f914947f61f6b7514cfe96cd1076440a04"
+        },
+        {
+          "path": "references/triggers.md",
+          "byteCount": 5992,
+          "sha256": "354a0e893538217dbfca061e682aba2ce3d454c7accca615f56d6a0147685a05"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 8,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "hundred-million-offers",
+      "family": "wondel",
+      "destination": "skills/hundred-million-offers/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "hundred-million-offers/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 29493,
+      "packagedSha256": "9f5dc1476d41085c03dd09b649ea84659f360f025d5c990b6bd73f3a4f2ce440",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/bonuses-stacking.md",
+          "byteCount": 12784,
+          "sha256": "624624c85fc04c0fea37aaace961d63be55f7edadafa02729ee57665367dbdc2"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 16939,
+          "sha256": "efaf0a1f82ba668b87fb881c7d5363a770a7eb26bdf3fb24f12db13173996393"
+        },
+        {
+          "path": "references/grand-slam-offers.md",
+          "byteCount": 12047,
+          "sha256": "b7079ff8724bcd8cc910b40a24110485936d9289d1009620d3da524c5bc22520"
+        },
+        {
+          "path": "references/guarantees.md",
+          "byteCount": 14011,
+          "sha256": "0c27eef0a0ddc4b4a7efbaf384d242a9ea28c6be9de828c60a86148e8d6a9e86"
+        },
+        {
+          "path": "references/naming-offers.md",
+          "byteCount": 15880,
+          "sha256": "5b15cd6f44260b76d10a7dd60d1d7e91b0d0bbdcdfb97f54625dd10c627ff22c"
+        },
+        {
+          "path": "references/offer-creation-checklist.md",
+          "byteCount": 15173,
+          "sha256": "72b81f277bf409e661a0ca170775addcbfc1c4bdde4852ffb5783b7ffbb13ce5"
+        },
+        {
+          "path": "references/pricing-strategy.md",
+          "byteCount": 12247,
+          "sha256": "0f0982dd7921619ddea77a48f3819e8f3865c10dc464959d9b7c325e65a0a878"
+        },
+        {
+          "path": "references/scarcity-urgency.md",
+          "byteCount": 13980,
+          "sha256": "a5aaabc0f03735801a7a1e482ac5e28019b727d95991e55c1cdf90c0c8bb56fa"
+        },
+        {
+          "path": "references/starving-crowd.md",
+          "byteCount": 13052,
+          "sha256": "2f7ebecb3e746dbb86136d6e7b4a5f16aeee4d37821fd89adca6edb248aee0cc"
+        },
+        {
+          "path": "references/value-equation.md",
+          "byteCount": 11445,
+          "sha256": "58d997e85190e267e0ceedfd2dcbfb83555af19602df9b4f14fc76e25ea745b3"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 11,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "improve-retention",
+      "family": "wondel",
+      "destination": "skills/improve-retention/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "improve-retention/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20386,
+      "packagedSha256": "a6dd496b0d6589e978465ae1014ea391ae204efceddf338925ab30deadff4f6b",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/ability-chain.md",
+          "byteCount": 8703,
+          "sha256": "5b1d2b5a9dde9f27e036e7db0aed3cdc71b459a47292d581c162e3cf87ecfd61"
+        },
+        {
+          "path": "references/behavior-model.md",
+          "byteCount": 7560,
+          "sha256": "88db697fd9e0f1590bc8d59c98e1c610fa519b92299e0d34ed71fc122968ec61"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 11286,
+          "sha256": "b645bb57188d653b3dd956aa487543cc6ab370e6fff22cbf33cd32cdad120c01"
+        },
+        {
+          "path": "references/motivation-waves.md",
+          "byteCount": 8702,
+          "sha256": "1872f779af7ef0f8adfee715eeb132d4f2df5c7978364bb64bb90542dd47a7d9"
+        },
+        {
+          "path": "references/product-applications.md",
+          "byteCount": 10008,
+          "sha256": "d315a3a63464cacc9c8fcc991f5183ab0a714ac849657d7fc204a84eb8da697a"
+        },
+        {
+          "path": "references/prompt-design.md",
+          "byteCount": 8872,
+          "sha256": "9e8b5e0f25157eec552a9b37f92c661333b9d5d3952693edb84939ca7b8f6935"
+        },
+        {
+          "path": "references/tiny-habits.md",
+          "byteCount": 8800,
+          "sha256": "919c71b26e9d749b2c5db870bf145164234b85e7bb2328195c9d71f53e425544"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 8,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "influence-psychology",
+      "family": "wondel",
+      "destination": "skills/influence-psychology/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "influence-psychology/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20603,
+      "packagedSha256": "17a41fa8284004a663b95e321a28c880d3521db86fd8391765e927f978b44e39",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/authority.md",
+          "byteCount": 13518,
+          "sha256": "e20463a5c0fc4e189011a05bb07133c770974687936d8f939235625709b66004"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 16092,
+          "sha256": "8c2108b397ccbc04ddeb40f2dc4351b411720c9a571d3faa21367387fee8c92f"
+        },
+        {
+          "path": "references/commitment-consistency.md",
+          "byteCount": 12723,
+          "sha256": "95d4d228a99dbbce4dcfedfd6d36bfc52940d9e48ceefe66da6e2b64561c93cd"
+        },
+        {
+          "path": "references/copywriting.md",
+          "byteCount": 14022,
+          "sha256": "fe7d25e655d6922fb27eb814d69a24b90477187806daf7df00324fdfa568fc65"
+        },
+        {
+          "path": "references/ethics.md",
+          "byteCount": 14330,
+          "sha256": "3065356b8a33cae3562e02a2a22dede1bbb0c7aea64d1dc58c0bba3c1c3888cc"
+        },
+        {
+          "path": "references/liking.md",
+          "byteCount": 15053,
+          "sha256": "d375b99dae644af606cf401be71a726928ece00727d1bda74ae994821676eb35"
+        },
+        {
+          "path": "references/reciprocity.md",
+          "byteCount": 11405,
+          "sha256": "d6c1f8e84c5fcda5a471e7f9ba155c39a6da1e0996bc8f1874141cc579043470"
+        },
+        {
+          "path": "references/scarcity.md",
+          "byteCount": 14759,
+          "sha256": "bf6684bddd0cedde0d295c4381e133a468a99b7762f8325f9c308e1262cbe6db"
+        },
+        {
+          "path": "references/social-proof.md",
+          "byteCount": 14272,
+          "sha256": "d9080bf811660832a66370984791b3ff7040be7a480d5bee24a850aa12fa701f"
+        },
+        {
+          "path": "references/unity.md",
+          "byteCount": 15016,
+          "sha256": "5ba8c451002fb4c0b59efc1ce18d998476ba04828fdf51212af37b96f140140f"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 11,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "inspired-product",
+      "family": "wondel",
+      "destination": "skills/inspired-product/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "inspired-product/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20609,
+      "packagedSha256": "6800e8e085c85ed258b91d8161533ff026537c70ad79352eeb0cea781b1b7e4f",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 16642,
+          "sha256": "0467e7d95be26f2f60168c855cb7ed0bfe89c58b4773328411a1df4a1b3b574d"
+        },
+        {
+          "path": "references/discovery-techniques.md",
+          "byteCount": 12715,
+          "sha256": "4df58eb89894c22933cafe4813b01ddbec9e5f9a5812f1ae44551b311e62c9f0"
+        },
+        {
+          "path": "references/empowered-teams.md",
+          "byteCount": 13060,
+          "sha256": "bd09e3e91a5804a364699bbdc60817d70313b759e7b9513b094b80a0deca4d13"
+        },
+        {
+          "path": "references/opportunity-assessment.md",
+          "byteCount": 13265,
+          "sha256": "7b928681fd93fcb590608599c7696068410ead76c61dbd9430f995a2e89d38d2"
+        },
+        {
+          "path": "references/product-vision.md",
+          "byteCount": 13144,
+          "sha256": "4c7e421d9cfc7fde625111b93e08c2d7159d07669de25c431fb0aaa56808a469"
+        },
+        {
+          "path": "references/stakeholder-management.md",
+          "byteCount": 15011,
+          "sha256": "88a71686b51cbccdba3edafbdd47734624feafba1d84f7e6719c1b328c98d670"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "ios-hig-design",
+      "family": "wondel",
+      "destination": "skills/ios-hig-design/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "ios-hig-design/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 24827,
+      "packagedSha256": "14bed7ac1a18a2085d8c46c68fcfd616b3552b4bbe477a20ba7fc7145b0a8b11",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/accessibility.md",
+          "byteCount": 1371,
+          "sha256": "ac3bb0b0b377703e784fa61dd972502e2427c5a373dfea7695ae094a303e2927"
+        },
+        {
+          "path": "references/app-icons.md",
+          "byteCount": 704,
+          "sha256": "a1463413ed074c7bea460f64c1bf0433d175b16c902050021b84f636ab3ab15e"
+        },
+        {
+          "path": "references/colors-depth.md",
+          "byteCount": 1184,
+          "sha256": "a2d72394889aa43fc7188ba39bc37825fdb9956f887f704cc68244cb2fbfa064"
+        },
+        {
+          "path": "references/components.md",
+          "byteCount": 5871,
+          "sha256": "69390c0822f36f92f0a3c2b9312e7ce67ea0b9fc24aa5c4055345453605498ba"
+        },
+        {
+          "path": "references/gestures.md",
+          "byteCount": 1204,
+          "sha256": "b3322f443f2d955dba53d0038c0743e27783ff82e4598ba4a6f9040d7d4843c3"
+        },
+        {
+          "path": "references/keyboard-input.md",
+          "byteCount": 11751,
+          "sha256": "41ab7c540b96e418732be051fbfd7ea5c96c25fe863b6d73ffeb21b236151954"
+        },
+        {
+          "path": "references/navigation.md",
+          "byteCount": 4658,
+          "sha256": "7642b8cfbf4b057c7408915f4d1bd5b9e443be33f03e5b4e2624a1800cfce600"
+        },
+        {
+          "path": "references/privacy-permissions.md",
+          "byteCount": 13846,
+          "sha256": "c1ea8198dc17ee07f22066f07a977fcd9c936ef982682a04657b9eb339711f76"
+        },
+        {
+          "path": "references/system-integration.md",
+          "byteCount": 9539,
+          "sha256": "fa6d18cbfd9a2b32937324b08ff9805dafc2a7a03e3c8dd9bfb6833a7ef62749"
+        },
+        {
+          "path": "references/typography.md",
+          "byteCount": 1328,
+          "sha256": "74bc1905b514bddc5d6b418ecd7e1fd3a7a76e63887f4b42dab4fb7a70126708"
+        },
+        {
+          "path": "references/widgets-extensions.md",
+          "byteCount": 13797,
+          "sha256": "18604052135f4d3a479ace089dadbdf92ba2a0a8442be5ce882661e49acd8489"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 12,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "jobs-to-be-done",
+      "family": "wondel",
+      "destination": "skills/jobs-to-be-done/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "jobs-to-be-done/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20948,
+      "packagedSha256": "93c55779335532cfd269a4d00b1e4f66062e9c51a52eb2f2d37ca5d9b5436ac3",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 6320,
+          "sha256": "8b84a8d21c76550b5aed97dbf3fe6014b68e4ee01aa40c4a43098cce65defd9f"
+        },
+        {
+          "path": "references/competitive-strategy.md",
+          "byteCount": 10038,
+          "sha256": "434e063dd6351e8e6e206e4e1279ffc0795e11e930cf722d5800fb40d64c4d9b"
+        },
+        {
+          "path": "references/diagnostics.md",
+          "byteCount": 6329,
+          "sha256": "8fd67851b62ac990b3c756454499e7fb11cc08b0c45f571ce88a0cf99b696f2c"
+        },
+        {
+          "path": "references/innovation-process.md",
+          "byteCount": 11844,
+          "sha256": "af7e840888aa3430218d002ecdc5f421204af34afef6e25260e40b5444f40eae"
+        },
+        {
+          "path": "references/organizational-change.md",
+          "byteCount": 10631,
+          "sha256": "ac3723d26ca21e1be002c2d7081b319bb8d33df53373b9dba570f05e2676f9ba"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 6,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "lean-startup",
+      "family": "wondel",
+      "destination": "skills/lean-startup/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "lean-startup/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20128,
+      "packagedSha256": "6605187b930dd21a8137dfc7b6bc509a72978cb563a52d6aa686242a4446a535",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/applications.md",
+          "byteCount": 14189,
+          "sha256": "60643365f99839da6fae172cf580dff6beab554410cc492ba63668c231bbfb57"
+        },
+        {
+          "path": "references/assumptions.md",
+          "byteCount": 13368,
+          "sha256": "265910cd160280d88ef2803bcb0992e70cb4429a9a93ae3a6038247851d8314b"
+        },
+        {
+          "path": "references/build-measure-learn.md",
+          "byteCount": 11504,
+          "sha256": "517cab2d11152488ab516b02760c3de57348cba5d990183afb367f8f6f5b10da"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 20045,
+          "sha256": "7dc3022346010941cfe63e2d6908e1408b06095f30df0472b6a6d4655c54ceb4"
+        },
+        {
+          "path": "references/five-whys.md",
+          "byteCount": 13279,
+          "sha256": "054ecf5e55e7601ab752cc751a6e59b0f11e55723c42066fe1c0c439de4f26fd"
+        },
+        {
+          "path": "references/growth-engines.md",
+          "byteCount": 13313,
+          "sha256": "c3b872eb20ba13521e2eee26e3a81f0719e9255dee507a8180530662f5218049"
+        },
+        {
+          "path": "references/innovation-accounting.md",
+          "byteCount": 11927,
+          "sha256": "6849e2f30cd4328677be4858bfceb2c45e116f38ae2acc3156ecd0b5d3771ddc"
+        },
+        {
+          "path": "references/metrics.md",
+          "byteCount": 12615,
+          "sha256": "21f9ce541f11c8b68bfb71f05f7505413cf39b1bdb11bcc40b006e8581563d49"
+        },
+        {
+          "path": "references/mvp-design.md",
+          "byteCount": 12777,
+          "sha256": "39fe845c74884fcf1a8b5881f5712f2c5b8ff8a5c312621c09ec3d521c2577e9"
+        },
+        {
+          "path": "references/pivots.md",
+          "byteCount": 13335,
+          "sha256": "bd531bf4ca03c96bc565dcd87d11a8e314320cdf85eb4892bf9fd45df6f4aadc"
+        },
+        {
+          "path": "references/small-batches.md",
+          "byteCount": 13072,
+          "sha256": "266e29e43bc52243ffea53e681c8c67d7a757d7c629d185b4762ebca9ef7605d"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 12,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "lean-ux",
+      "family": "wondel",
+      "destination": "skills/lean-ux/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "lean-ux/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19195,
+      "packagedSha256": "3469e3cbda23eb0475ac3b87393ed6e1907e4ed40ba90ef4a9422a4fe8906ab9",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/agile-integration.md",
+          "byteCount": 13301,
+          "sha256": "a347bada8e1d8876fa044d4a1aba0c68d75f6c99b10ee3ec77ed6e484234fc9d"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 16018,
+          "sha256": "bf53d68e71b3c3df49cfabff6b13ae1121ea3e5cd53c4802cdb6cfb4f60d425b"
+        },
+        {
+          "path": "references/collaborative-design.md",
+          "byteCount": 13303,
+          "sha256": "1186feb66213de37f4a90a09319c57d56036c5e20f497113cac07414cf67dad0"
+        },
+        {
+          "path": "references/experiment-patterns.md",
+          "byteCount": 13962,
+          "sha256": "f20d8bdc8f361087d815b710ee163ef10cd94292ae08fcf6d8c2ddf4bb8bc504"
+        },
+        {
+          "path": "references/hypothesis-canvas.md",
+          "byteCount": 11256,
+          "sha256": "d4e784829354d80146a8319c048c0824561ae24deab2bbc0681ba6c6ba2ab9ee"
+        },
+        {
+          "path": "references/outcome-metrics.md",
+          "byteCount": 13206,
+          "sha256": "c9728a41abb4153304902822921c122c7cd0d147e43467596a53a304940b9c3c"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "made-to-stick",
+      "family": "wondel",
+      "destination": "skills/made-to-stick/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "made-to-stick/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 17823,
+      "packagedSha256": "12dad8858c1b775e747b8aae0079ba92e5f0a59feb39b704ced97748baec9ed8",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/applications.md",
+          "byteCount": 14523,
+          "sha256": "c0759632086863f3d9d055b1dbb0bee578accd3a1a54cb4a1df5cc305b0c6d4d"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 17246,
+          "sha256": "583ee06a38f7b4ee5a3995766c629d1958e1e87381c1fa44b2030b9cff86ecc6"
+        },
+        {
+          "path": "references/concrete.md",
+          "byteCount": 14170,
+          "sha256": "195c9d8286cacf446ec3ece42e4a140ceec6bfe29a495adc014db8af12c3fbcd"
+        },
+        {
+          "path": "references/credible.md",
+          "byteCount": 12887,
+          "sha256": "40401976d30ab0bf8a636a5970a809a9a938afe02ff0a186e44266df52f01bc3"
+        },
+        {
+          "path": "references/curse-of-knowledge.md",
+          "byteCount": 15947,
+          "sha256": "a426688f41495fdd6a8fc505da31915850d5a50d31f4eb3c08a3d933a8067722"
+        },
+        {
+          "path": "references/emotional.md",
+          "byteCount": 14552,
+          "sha256": "7925fe5640d67f768cc0217ac0956d14f5d8c76cc100f0bf0c69d15bc6a85637"
+        },
+        {
+          "path": "references/simple.md",
+          "byteCount": 12964,
+          "sha256": "98481daf6a8b7299c53f39539c532286ac3420b602ce2616da42171cc1b37c7c"
+        },
+        {
+          "path": "references/stories.md",
+          "byteCount": 16875,
+          "sha256": "97974d6012c36e5dbcf951e506acb38ad99d1c503c4840dcfe0cd3c82ee09431"
+        },
+        {
+          "path": "references/unexpected.md",
+          "byteCount": 12670,
+          "sha256": "f0e32f830392a71e265f3d3dd9a1f67010cfcc6b32a2a7b14fb19acd031fb707"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 10,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "microinteractions",
+      "family": "wondel",
+      "destination": "skills/microinteractions/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "microinteractions/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19717,
+      "packagedSha256": "f0df3ded6b530d13c0bb8cd99fa4282d60fa3bf587abbb9e56ca10589bef9d52",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 19262,
+          "sha256": "abc31683a0b3b85d81b1fcd367caa436fe60905a909e0959c122e5ab195ed4bb"
+        },
+        {
+          "path": "references/feedback-patterns.md",
+          "byteCount": 16598,
+          "sha256": "6f0ddaf49d86c1578397c532d25c307613d67faf6438feaa88224fe694671528"
+        },
+        {
+          "path": "references/loops-modes.md",
+          "byteCount": 14213,
+          "sha256": "e261e8b3bc9c98c3e9e3dc882b74d26f80fa1d8d0d077af7e8692b0a4efa16d6"
+        },
+        {
+          "path": "references/rules-and-state.md",
+          "byteCount": 15071,
+          "sha256": "d21c5035aceb947be2db3014450875d73ecf1bf8c9bee0f94b397f9ef9f1bea7"
+        },
+        {
+          "path": "references/signature-moments.md",
+          "byteCount": 14333,
+          "sha256": "f82b690d980c40289280698602a18a3ba202376b3150f2697b85ff7001197f44"
+        },
+        {
+          "path": "references/trigger-design.md",
+          "byteCount": 12529,
+          "sha256": "06d1ae166b0983533b1180dd00643df91ac3b6ca36f86df9e1ded5c83aa2aaa2"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "mom-test",
+      "family": "wondel",
+      "destination": "skills/mom-test/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "mom-test/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 21967,
+      "packagedSha256": "0510b179d0573429afb7242e5eb78a09835a27845ca3a94f38170bb92fb13b4e",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/avoiding-bad-data.md",
+          "byteCount": 11499,
+          "sha256": "492fca0a7b8dcbaf957b6ebbb59c659fc61b056c9a3a8c4c12db45960b19b00f"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 17199,
+          "sha256": "6dcf83432fe3200d35621fe71c94948d909a0ea7fbe01cf72bd51d16b4afc65b"
+        },
+        {
+          "path": "references/commitment-advancement.md",
+          "byteCount": 10585,
+          "sha256": "5ccdc2f2a23ef277cb24db064a6707b8508199ae27e40421e831ad7579ffae8c"
+        },
+        {
+          "path": "references/finding-conversations.md",
+          "byteCount": 11576,
+          "sha256": "c92135a7eee5ad8e8770eb7ad51442395ad53b1fb33ef267df83918c7b088912"
+        },
+        {
+          "path": "references/processing-learning.md",
+          "byteCount": 12821,
+          "sha256": "2d1d764128cd088e49e87134d842703bf708dae04a3ef2a1ded19596cd70d901"
+        },
+        {
+          "path": "references/question-patterns.md",
+          "byteCount": 10400,
+          "sha256": "fedda8d801d493c5f6df50a26124f1da748b1b92044282bbef5d64f209c68744"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "negotiation",
+      "family": "wondel",
+      "destination": "skills/negotiation/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "negotiation/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 24884,
+      "packagedSha256": "d1943f19b72d0434918e21207295a214a65b31e4733610e5f5a6d06fe533bea2",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/techniques.md",
+          "byteCount": 16728,
+          "sha256": "f2f51aea33a31bf8fdd4e577d08cad0874a7c1cdaee2021100a237626181f184"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 2,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "obviously-awesome",
+      "family": "wondel",
+      "destination": "skills/obviously-awesome/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "obviously-awesome/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 25042,
+      "packagedSha256": "75648e29544dd3ca79896630636f263747387c914329c6dc5b5fadf8b4eb99f3",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 21246,
+          "sha256": "bd2bdbd85a817290768af707d89b751787f5332e4747375072d6747140b4a3d5"
+        },
+        {
+          "path": "references/competitive-alternatives.md",
+          "byteCount": 11968,
+          "sha256": "28c61a953431d472b2b134b8096bcb3e3f971b6caeff4b5083f6d58f98ae43a5"
+        },
+        {
+          "path": "references/market-category.md",
+          "byteCount": 14718,
+          "sha256": "ee3e78f685984a534417640aae6cc3d8704ba03bedf1d79316176928e797dc6f"
+        },
+        {
+          "path": "references/positioning-canvas.md",
+          "byteCount": 15105,
+          "sha256": "d60a4c0e02f371d6f75348c027cfeed5cb3fd498a4e8b9949e395c780b8f7f4f"
+        },
+        {
+          "path": "references/target-customers.md",
+          "byteCount": 13681,
+          "sha256": "9d78e65e4d5fb6f503cfcef780e0ce167422952b5b0890610c4447c544c2975a"
+        },
+        {
+          "path": "references/team-exercise.md",
+          "byteCount": 15601,
+          "sha256": "69bb96a7bdcfbea668e14211f55f16eacadfb21a092927ed5e04d725c54c1549"
+        },
+        {
+          "path": "references/unique-attributes.md",
+          "byteCount": 11970,
+          "sha256": "a322fee51821a2dc99f616a1b03bdb71d7eb8266465b4e3a50621fa7dafc5d66"
+        },
+        {
+          "path": "references/value-mapping.md",
+          "byteCount": 13150,
+          "sha256": "16f8253b999ccedc20cac2d0790114339ec47fa6f84b9a3078b9a3387deea7e7"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 9,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "one-page-marketing",
+      "family": "wondel",
+      "destination": "skills/one-page-marketing/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "one-page-marketing/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 31042,
+      "packagedSha256": "255ac1942b2ddc94b0b386b2c5798d7639dbf003f20dbf4f3e096235533d5ab7",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/advertising-media.md",
+          "byteCount": 12957,
+          "sha256": "b380ed7486817309e16d34bf5d852e6722ee18c3da0f86a53224facc656bdd52"
+        },
+        {
+          "path": "references/capture-leads.md",
+          "byteCount": 13450,
+          "sha256": "06acfc86c201e169674daac113de4a2563e7edc36e4011455bca6caca59b3932"
+        },
+        {
+          "path": "references/craft-message.md",
+          "byteCount": 12127,
+          "sha256": "f742d20e76c73bd848af10fc061ecde096090e7a3e5811293b65eb04bc9a2521"
+        },
+        {
+          "path": "references/customer-experience.md",
+          "byteCount": 13298,
+          "sha256": "7837d8ef0592a2750389febbb74cdd95b3975a6439017111db58730b878f43e0"
+        },
+        {
+          "path": "references/lifetime-value.md",
+          "byteCount": 14486,
+          "sha256": "20d7df2a9a729b5fc2923c373c7bf78ebd9457895bab5fbebfb4e1e6a01f624b"
+        },
+        {
+          "path": "references/nurture-leads.md",
+          "byteCount": 13304,
+          "sha256": "451ce68f5d1d0e61d50e8eb06103d1c1f9702f4f8ac5063ba1063d61075cf041"
+        },
+        {
+          "path": "references/one-page-plan-template.md",
+          "byteCount": 29205,
+          "sha256": "14dec5dbb59d117143a5c1190cf9ea7d782344445543104a670f97ff6473f121"
+        },
+        {
+          "path": "references/referral-systems.md",
+          "byteCount": 16021,
+          "sha256": "eeb862ff75ffd928151f994614254985dbc73c79a4951410c761ec633885233f"
+        },
+        {
+          "path": "references/sales-conversion.md",
+          "byteCount": 14843,
+          "sha256": "d061e15ba5f48053c13dca03a027ea52f476d8b12d6ae1d83d5715bb5553eba6"
+        },
+        {
+          "path": "references/target-market.md",
+          "byteCount": 11385,
+          "sha256": "80bb4e9c33a4081a66084a5a88254d1bd57e600a7e7be7da7091e0d88870fcb9"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 11,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "pragmatic-programmer",
+      "family": "wondel",
+      "destination": "skills/pragmatic-programmer/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "pragmatic-programmer/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 18737,
+      "packagedSha256": "5c9971f39371bebd43c0a706e783ebbb992116a48c01d3222a90c07327dd0d54",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/broken-windows.md",
+          "byteCount": 11791,
+          "sha256": "8d55146aa8bd3450e89ef4259f127ccc289ba85b009a3c49e3f030880ff9589d"
+        },
+        {
+          "path": "references/contracts-assertions.md",
+          "byteCount": 13596,
+          "sha256": "0a9f090d52228dffdd9cd418bdf5b10808cdea13293a670994ec9642d4c856b3"
+        },
+        {
+          "path": "references/dry-orthogonality.md",
+          "byteCount": 11207,
+          "sha256": "affdb09c1af5049fce6603ad9bc7788c28aa5515ee8eb9d4e14e1011339cb314"
+        },
+        {
+          "path": "references/estimation-portfolio.md",
+          "byteCount": 13975,
+          "sha256": "dd847f1325dd0cd02fde151d2966d08d7a0279122e2b8d9baa88232760a0980c"
+        },
+        {
+          "path": "references/reversibility.md",
+          "byteCount": 14232,
+          "sha256": "dfc6b4b94547fa962a30139f794eeda651c81d17d982d0d7ae328afd6a2ed8bd"
+        },
+        {
+          "path": "references/tracer-bullets.md",
+          "byteCount": 12129,
+          "sha256": "1ecc782fa53ba364a8d4766a38d551ce696d29583bebfc0710d680270e587fa2"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "predictable-revenue",
+      "family": "wondel",
+      "destination": "skills/predictable-revenue/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "predictable-revenue/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 14992,
+      "packagedSha256": "5b2ec17a528528b100457f4bf818e06ac89b208c64516b0803610e9bd93a1159",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 14733,
+          "sha256": "bbc885afca11c23266e8f012efe7ab842b81badd0935f8b979f9a89ab81c326f"
+        },
+        {
+          "path": "references/cold-calling-2.md",
+          "byteCount": 12539,
+          "sha256": "39232d1af56a000d5c793def5b0f3203b1e480dc000d345c8dbb67d208d2deec"
+        },
+        {
+          "path": "references/lead-types.md",
+          "byteCount": 11290,
+          "sha256": "30bbbd18164e4fd5fe323adf2c218777ccd1c3823212ab8c42175a992462ed8c"
+        },
+        {
+          "path": "references/metrics.md",
+          "byteCount": 13827,
+          "sha256": "a5f1183c9e284c86795c048d681d4027a69aae5b5f112d0bf75b0b98fee791dc"
+        },
+        {
+          "path": "references/pipeline-math.md",
+          "byteCount": 10734,
+          "sha256": "2a5e31c6d3e2016406c54ffed9bae019ae319f1c30cdc1d3b75a48b8b4b3aab2"
+        },
+        {
+          "path": "references/qualification.md",
+          "byteCount": 15782,
+          "sha256": "c202b8842f7ed1132d8ed21fb5fab502a71427108b3c4e7a8fa0988b6b513593"
+        },
+        {
+          "path": "references/roles.md",
+          "byteCount": 12938,
+          "sha256": "097402e8f8a4f96a439a966b061c268d1de5115c1dbbf25f37773acaa459affb"
+        },
+        {
+          "path": "references/team-building.md",
+          "byteCount": 13138,
+          "sha256": "5beed9de93da975722c0da7d685a1019803c557415ab617bca7ebb0785e780a6"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 9,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "refactoring-patterns",
+      "family": "wondel",
+      "destination": "skills/refactoring-patterns/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "refactoring-patterns/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 21645,
+      "packagedSha256": "bc5ea41f54830d8c3806aead051e7c85afea1f52464ae95ddb758822e5b427f0",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/composing-methods.md",
+          "byteCount": 11914,
+          "sha256": "2c34688d34b759016d1a6bb9366c42213558d6ef0523191eeac39b360fa11369"
+        },
+        {
+          "path": "references/moving-features.md",
+          "byteCount": 12272,
+          "sha256": "42eb3c8d3cdc1a8b94009fb06490973dfd217e45d19c4d95097415bf45e6cd77"
+        },
+        {
+          "path": "references/organizing-data.md",
+          "byteCount": 12987,
+          "sha256": "56679857a095cce1026d9d684bf1c9ed33769d758935b583b2e65fc45762217f"
+        },
+        {
+          "path": "references/refactoring-workflow.md",
+          "byteCount": 14298,
+          "sha256": "e5e9060808dea4e29b551609b230c29adc7286ab6c1fff008d542029de306be8"
+        },
+        {
+          "path": "references/simplifying-conditionals.md",
+          "byteCount": 13132,
+          "sha256": "67168e1a6327180c6f1c0becebc372ac6a4d3398c9434bdf74f17208e998f677"
+        },
+        {
+          "path": "references/smell-catalog.md",
+          "byteCount": 13510,
+          "sha256": "2a0136cb2e8b263d1fc2dbba912688e415e32809c7140b51cf6f1f10f3fe8ff4"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "refactoring-ui",
+      "family": "wondel",
+      "destination": "skills/refactoring-ui/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "refactoring-ui/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20007,
+      "packagedSha256": "8e0a58425c161144535f4a82423a277592a250dcf64815b1d414904c53fca7a9",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/accessibility-depth.md",
+          "byteCount": 11752,
+          "sha256": "f6932aca3043aeff32c9f1581d29fc213da24fbbb094f00a3b6ed5af78afaabc"
+        },
+        {
+          "path": "references/advanced-patterns.md",
+          "byteCount": 10929,
+          "sha256": "73c2c1c9359d7715745b89b4074846873d1d278d487a5bcd6f06f4332e161814"
+        },
+        {
+          "path": "references/animation-microinteractions.md",
+          "byteCount": 9515,
+          "sha256": "9ffee063fdba3b18556f70631db575b98af298978493c228e6d1f6d2f4600454"
+        },
+        {
+          "path": "references/data-visualization.md",
+          "byteCount": 11788,
+          "sha256": "53401fa2cc58a2ae412d03e52fcbc53dc9d4acdd45aaed6c3747299273530bc6"
+        },
+        {
+          "path": "references/theming-dark-mode.md",
+          "byteCount": 10115,
+          "sha256": "61159934eee491713718d6a725e2e25e34aa73f2e6433214aca9afdc413212e6"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 6,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "release-it",
+      "family": "wondel",
+      "destination": "skills/release-it/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "release-it/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 21270,
+      "packagedSha256": "9eb2af534f34905a4c67a00984be08506773913d96af920a98419316e443dd25",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/anti-patterns.md",
+          "byteCount": 14927,
+          "sha256": "0149f8f55778846b6b172aa6909d0e00332c8c9ffbb235e002d27ad6fe827d39"
+        },
+        {
+          "path": "references/capacity-planning.md",
+          "byteCount": 14147,
+          "sha256": "1a09ea3f72476e7be73caa4466b5874a091c3793547ca6e12f6e05745b1ec978"
+        },
+        {
+          "path": "references/chaos-engineering.md",
+          "byteCount": 18094,
+          "sha256": "64168185d644cbc28b7064b80002ef15693ad753c9525f12d1924b9d07ba5590"
+        },
+        {
+          "path": "references/deployment-strategies.md",
+          "byteCount": 14919,
+          "sha256": "a5006a6bd1bab33c440fddec463d5b68e7bde811d5a2b85bf2a7d655241f5e38"
+        },
+        {
+          "path": "references/observability.md",
+          "byteCount": 13835,
+          "sha256": "204da0b8e3db91e2a3605bc07e483ed755169815a766ff62d555ae28fb3cca76"
+        },
+        {
+          "path": "references/stability-patterns.md",
+          "byteCount": 18073,
+          "sha256": "11f7093204a04f905a1dfc17e9edd94b82641b325987e6f7b79282bdf6ffec98"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "scorecard-marketing",
+      "family": "wondel",
+      "destination": "skills/scorecard-marketing/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "scorecard-marketing/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 18472,
+      "packagedSha256": "2a1b620e7d6f806b8f956170192d2191574866411fb73f97034bb7dc6678a119",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/analytics-optimization.md",
+          "byteCount": 10348,
+          "sha256": "0a1c45088014763495c28fccba16b12c33c56d580c11e504c32203ee6b38f57b"
+        },
+        {
+          "path": "references/industry-examples.md",
+          "byteCount": 7616,
+          "sha256": "31880f0307de1a42969209bede9529a7ca6fe39fcb239a2cf32cc70a5bdb53c2"
+        },
+        {
+          "path": "references/psychology.md",
+          "byteCount": 5531,
+          "sha256": "d599c8c2bd831e4fe5fe94460dee87f8d261edab5fc0b19d916912d61f1be8dc"
+        },
+        {
+          "path": "references/technical-implementation.md",
+          "byteCount": 14346,
+          "sha256": "583f1f348536446f6083cd954842cb0d33c77f6e9498613af615eb44de3a7b9a"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 5,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "software-design-philosophy",
+      "family": "wondel",
+      "destination": "skills/software-design-philosophy/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "software-design-philosophy/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 21227,
+      "packagedSha256": "7cef6aaf28a42d4827b872e0299b261773abba09c8a39016c89adf55b0c39f20",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/comments-as-design.md",
+          "byteCount": 16736,
+          "sha256": "da3a3d72ccd942060ba8c82a3b63a538894b53cb9f3a291356a805689987fb67"
+        },
+        {
+          "path": "references/complexity-symptoms.md",
+          "byteCount": 11995,
+          "sha256": "2c9ce0e98b0086177d71824900cc0a024bf9d3da6f671fc023a75022e4a05046"
+        },
+        {
+          "path": "references/deep-modules.md",
+          "byteCount": 13635,
+          "sha256": "2589adf2d4ccf84c35f761166e07ad0c9f945d4c042eca819ed7d94a331197ad"
+        },
+        {
+          "path": "references/general-vs-special.md",
+          "byteCount": 13534,
+          "sha256": "52d6dd43a24bd964d27042d6dec3baed6c04158b6f7d4a2f60f111d543459b87"
+        },
+        {
+          "path": "references/information-hiding.md",
+          "byteCount": 12271,
+          "sha256": "0fdc29b4980d7162104ce4e49ccf8f75a97d9fbf6a18c544c37da14c580415ea"
+        },
+        {
+          "path": "references/strategic-programming.md",
+          "byteCount": 13681,
+          "sha256": "31a06a605aac4f8286fc60f69722113fa0cd246d3efe6fa68bad9ba452a4883d"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "storybrand-messaging",
+      "family": "wondel",
+      "destination": "skills/storybrand-messaging/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "storybrand-messaging/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20338,
+      "packagedSha256": "ee503e43407d3fbd0e8796e575ca4deea5b07a37f44540c68af6ae376af78721",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/brand-script.md",
+          "byteCount": 4288,
+          "sha256": "0ea0a36b9939de5b0c3038b0bef8ff2f7d72f0bbab30a607ae91cf4554f05865"
+        },
+        {
+          "path": "references/email-sequences.md",
+          "byteCount": 10741,
+          "sha256": "5388fc29f29847db97ebe556df38193457bbe7b33d2263006e532df1d4c16662"
+        },
+        {
+          "path": "references/multi-channel-consistency.md",
+          "byteCount": 9562,
+          "sha256": "74ec25080e726bb9338b3a188726ba7bffbb3f616fb2f8186a518b417da07dc3"
+        },
+        {
+          "path": "references/one-liners.md",
+          "byteCount": 5253,
+          "sha256": "3c52ccda8cbac62747016f394206a4ff5f9d928ca31ae93d8dbb24b5b643af2d"
+        },
+        {
+          "path": "references/sales-conversations.md",
+          "byteCount": 10378,
+          "sha256": "5250588770737f0a6d9b8228bece51b73ccb6be7618ab4866d38bc35f0bd9bb9"
+        },
+        {
+          "path": "references/website-wireframe.md",
+          "byteCount": 24871,
+          "sha256": "3a3d1a0a28f316ff210f6e23be0a17d9799dbf3389d2e580cafe5f42d3947d0b"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "system-design",
+      "family": "wondel",
+      "destination": "skills/system-design/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "system-design/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 19211,
+      "packagedSha256": "2c5960068417c22e57f5f3fe01806628c9d663279e5c5063449a034a9ca31bd2",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/building-blocks.md",
+          "byteCount": 11730,
+          "sha256": "3cd43ba2763d1cdeb11c689b2a210f9d929d97fe215660ad283061c4d843c130"
+        },
+        {
+          "path": "references/common-designs.md",
+          "byteCount": 12139,
+          "sha256": "a6a8ce0d4f7a8e5e511f7f8e70c6f53104357437df1442f4b27ade5aefac14e1"
+        },
+        {
+          "path": "references/database-scaling.md",
+          "byteCount": 11386,
+          "sha256": "ebbfc992ba16746c7abd558f77533ceb82fa28292fef99269eb3f4f94d72809f"
+        },
+        {
+          "path": "references/estimation-numbers.md",
+          "byteCount": 8617,
+          "sha256": "ac8b16c67e6d52082a44ebc6ea64e0bce84769619a223f1c59cd967ad2c4ebe4"
+        },
+        {
+          "path": "references/four-step-process.md",
+          "byteCount": 10151,
+          "sha256": "9674d371459a4ab47306c0ccc96fc1e1d16743a31bfce0c17b9bb7a4180e0ec3"
+        },
+        {
+          "path": "references/reliability-operations.md",
+          "byteCount": 13914,
+          "sha256": "157e6b215d72e5e487f326f98ba6742cc447507fad59d99b10a829d01f9c837f"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 7,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "top-design",
+      "family": "wondel",
+      "destination": "skills/top-design/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "top-design/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 38841,
+      "packagedSha256": "e4ae93f97c91cfcae7767a5ae3b98489d8dbe1af11d01aa5a6cc193b398c5c06",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/animation-patterns.md",
+          "byteCount": 14388,
+          "sha256": "863403bc44181d89aec8cc605f70c69bcb0439c445ab56d65eaf3014ff81b80d"
+        },
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 12377,
+          "sha256": "4c15d0df91a201340e8d5d896410bb8d3279587e2e97a98b56bc16c5c96cf59a"
+        },
+        {
+          "path": "references/layout-systems.md",
+          "byteCount": 9587,
+          "sha256": "bd04539bffeee7ff2d2572112ff2b1415d01f0ff22c9172d4b22198eada800a5"
+        },
+        {
+          "path": "references/technical-stack.md",
+          "byteCount": 11011,
+          "sha256": "b4828ffc4f11d871695d0e53e89924b2f3cb8b918ee577c2c8b23f842ad17068"
+        },
+        {
+          "path": "references/typography.md",
+          "byteCount": 8490,
+          "sha256": "000207dae3048448cf9c8ceecd744295b1a324a1ff908c96163464ac2a0756c7"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 6,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "traction-eos",
+      "family": "wondel",
+      "destination": "skills/traction-eos/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "traction-eos/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 16217,
+      "packagedSha256": "1cf382812df37402dd07596338f53e57dbc369bb953f6b57584579c67f136cf4",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/case-studies.md",
+          "byteCount": 18493,
+          "sha256": "2812fed28cbba1bac46c7f2ac485eb79778beccfe21892a1f1127f81632e8ed0"
+        },
+        {
+          "path": "references/data.md",
+          "byteCount": 12783,
+          "sha256": "a794a2a5b24dd26f9d24b8985e587c87d42075a88c19e106efc71f2e22460364"
+        },
+        {
+          "path": "references/implementation.md",
+          "byteCount": 15501,
+          "sha256": "bef173f37187be401ba56e27a31690ce8cfdc79c19a72a3b8cde4af92db04c3f"
+        },
+        {
+          "path": "references/issues.md",
+          "byteCount": 14137,
+          "sha256": "587b20b3ab65d6c972763853868889456249b96eca1ab9f6b60bc58e98d0dc40"
+        },
+        {
+          "path": "references/level-10.md",
+          "byteCount": 13552,
+          "sha256": "874894bad28d050776b5d8d1bad04860d7f44af887fdc77d744e640c9e1d56cd"
+        },
+        {
+          "path": "references/people.md",
+          "byteCount": 13330,
+          "sha256": "0ed91f2d4e76ec45c3279a98dfbb7daad792aa06a29de64dad4b49a566dcc5c4"
+        },
+        {
+          "path": "references/process.md",
+          "byteCount": 13666,
+          "sha256": "fd6e4ebad52c5fb1c6a3b0815ef8df91266c9dba467f0bab939dfd013cf04013"
+        },
+        {
+          "path": "references/rocks.md",
+          "byteCount": 12971,
+          "sha256": "404953fa89a9942440d26a7d443133be2cb0965695dd63720b441ae1f775e153"
+        },
+        {
+          "path": "references/vto.md",
+          "byteCount": 14569,
+          "sha256": "9fae1fe62e8c70cf4ab45645395ab83e37477fdc9600a63923a847557f58cff9"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 10,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "ux-heuristics",
+      "family": "wondel",
+      "destination": "skills/ux-heuristics/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "ux-heuristics/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 20169,
+      "packagedSha256": "2e2188eaaa06c095de1c6c7ac1fbbdf3f869ee4febc07c7dc8958a7589542333",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/audit-template.md",
+          "byteCount": 5749,
+          "sha256": "d28d35ea15d8e70d5537d719e1ba3888e3cbcb5306d50451e65f56dc21d4ff8e"
+        },
+        {
+          "path": "references/cultural-ux.md",
+          "byteCount": 9355,
+          "sha256": "c00f0a8c77e0982988a2d012d5a2f31a0221d3c5ea5f8214ed1b2ea8ac3b3c17"
+        },
+        {
+          "path": "references/dark-patterns.md",
+          "byteCount": 11131,
+          "sha256": "3af4522a25b03b1ce86467f8781b5f076bba72f60211d00a18673ef1cdcdb48c"
+        },
+        {
+          "path": "references/heuristic-conflicts.md",
+          "byteCount": 8168,
+          "sha256": "fba04433ef077de2f027d9b69a378e85fc80b06c678e01aacbfc9e8c79fb12bd"
+        },
+        {
+          "path": "references/krug-principles.md",
+          "byteCount": 7388,
+          "sha256": "4acd8802a606750bc8d91893d1d55611197a8084c2229782d49f56b546bb273b"
+        },
+        {
+          "path": "references/nielsen-heuristics.md",
+          "byteCount": 13337,
+          "sha256": "09b2141efb6a2e232772a3cd8f30b9be966004dff9d2e80c9137413d7ebe7c71"
+        },
+        {
+          "path": "references/wcag-checklist.md",
+          "byteCount": 11664,
+          "sha256": "b1d4ae49d7bf14b2921bb980e442d3c9ac4578ac44b3b5577b9ffacd53249435"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 8,
+        "unresolvedLinks": 0
+      }
+    },
+    {
+      "slug": "web-typography",
+      "family": "wondel",
+      "destination": "skills/web-typography/SKILL.md",
+      "source": {
+        "repo": "wondelai/skills",
+        "path": "web-typography/SKILL.md",
+        "commit": "7c71a845071e8f994253db0d26c7e36fa90e2b5e"
+      },
+      "attribution": "Wondel.ai",
+      "license": "MIT",
+      "byteCount": 27604,
+      "packagedSha256": "0ccda6c5b943a94eeff56ddb82bc3ba660c60a886d8657569fba55cda85fe1a6",
+      "classification": "vendored-unchanged",
+      "supportFiles": [
+        {
+          "path": "references/css-implementation.md",
+          "byteCount": 10937,
+          "sha256": "ed328ab3d68f15ad0e1e2971f37cbd8f7f5af66bbdf38231a287162a0ebc4069"
+        },
+        {
+          "path": "references/evaluating-typefaces.md",
+          "byteCount": 8419,
+          "sha256": "05c4fcff1c97dc8db32f058d46f7cbab0bb359602b5c86dd98fa77c6bc94d8d5"
+        },
+        {
+          "path": "references/pairing-strategies.md",
+          "byteCount": 8401,
+          "sha256": "f90c1992b3cdf0e2fe2b864a277d0374b1b43c6de573f6809ad8b2fd098c0798"
+        },
+        {
+          "path": "references/responsive-typography.md",
+          "byteCount": 9167,
+          "sha256": "ff19e1896bdda483c223918b803ce0305e583d271f08eee3fe07a6053bbc4a8b"
+        },
+        {
+          "path": "references/typeface-anatomy.md",
+          "byteCount": 7948,
+          "sha256": "0b453080a92ca0c4dce5eb1226edc446136dd238a14ab584925b64e03b58ef4f"
+        }
+      ],
+      "linkClosure": {
+        "markdownFiles": 6,
+        "unresolvedLinks": 0
+      }
+    }
+  ]
+}

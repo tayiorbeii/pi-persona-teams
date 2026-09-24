@@ -33,3 +33,6 @@ declare const process: {
 interface ImportMeta {
   dir: string;
 }
+declare const TextEncoder: {
+  new (): { encode(input?: string): Uint8Array };
+};
