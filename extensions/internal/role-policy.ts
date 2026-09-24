@@ -28,7 +28,7 @@ const APPROVED_PROVIDER_READ_TOOL = new RegExp(
   "i",
 );
 // context-mode execute tools run caller-supplied code, so they are gated by input rather than by name:
-// shell code and batch commands pass the same shell gate as `bash`; JS/TS analysis code must stay
+// shell code and batch commands pass the read-only `bash` gate for every role; JS/TS analysis code must stay
 // inside a static capability screen and may only read files inside the assigned workspace.
 const CONTEXT_MODE_EXECUTE_TOOL = /^(?:ctx_|context[-_]?mode_(?:ctx_)?|mcp__context[-_]?mode__(?:ctx_)?|mcp:context[-_]?mode[:/](?:ctx_)?)(execute_file|execute|batch_execute)$/i;
 const ANALYSIS_LANGUAGE = /^(?:javascript|js|typescript|ts)$/i;
@@ -128,21 +128,22 @@ function commandAllowedForImplementation(command: string): boolean {
   return commandAllowedForReadOnly(trimmed);
 }
 
-function shellAllowedForAuthority(authority: string, command: string): boolean {
-  return authority === "implementation-writer" ? commandAllowedForImplementation(command) : commandAllowedForReadOnly(command);
-}
+// context-mode shell runs outside the persona's bash hook, so every role gets the read-only command gate here.
+function evaluateContextModeExecute(operation: string, input: Record<string, unknown>, workspace: string): { allowed: boolean; reason: string } {
+  if (input.cwd !== undefined && (typeof input.cwd !== "string" || !isInsideWorkspace(workspace, input.cwd))) {
+    return { allowed: false, reason: "context-mode cwd must stay inside the assigned workspace" };
+  }
 
-function evaluateContextModeExecute(operation: string, input: Record<string, unknown>, workspace: string, authority: string): { allowed: boolean; reason: string } {
   if (operation === "batch_execute") {
     const commands = input.commands;
-    if (commands !== undefined && !Array.isArray(commands)) return { allowed: false, reason: "context-mode batch commands must be a list of {label, command}" };
-    for (const entry of (commands ?? []) as unknown[]) {
-      const command = entry && typeof entry === "object" ? (entry as Record<string, unknown>).command : undefined;
-      if (typeof command !== "string" || !shellAllowedForAuthority(authority, command)) {
-        return { allowed: false, reason: `context-mode batch command is outside this role's shell boundary: ${String(command).slice(0, 80)}` };
+    if (!Array.isArray(commands) || commands.length < 1 || commands.length > 8) return { allowed: false, reason: "context-mode batch needs 1-8 {label, command} entries" };
+    for (const entry of commands as unknown[]) {
+      const { label, command } = entry && typeof entry === "object" && !Array.isArray(entry) ? entry as Record<string, unknown> : {};
+      if (typeof label !== "string" || label.trim() === "" || typeof command !== "string" || !commandAllowedForReadOnly(command)) {
+        return { allowed: false, reason: `batch commands must be bounded read-only operations in the assigned workspace: ${String(command).slice(0, 80)}` };
       }
     }
-    return { allowed: true, reason: "context-mode batch within the role's shell boundary" };
+    return { allowed: true, reason: "bounded read-only batch in assigned workspace" };
   }
 
   if (operation === "execute_file") {
@@ -156,7 +157,7 @@ function evaluateContextModeExecute(operation: string, input: Record<string, unk
   const code = typeof input.code === "string" ? input.code : "";
   if (!code.trim()) return { allowed: false, reason: "context-mode execute requires explicit code" };
   if (SHELL_LANGUAGE.test(language)) {
-    return shellAllowedForAuthority(authority, code)
+    return commandAllowedForReadOnly(code)
       ? { allowed: true, reason: "context-mode shell code within the role's shell boundary" }
       : { allowed: false, reason: "context-mode shell code is outside this role's shell boundary; use a single bounded read-only command" };
   }
@@ -191,9 +192,15 @@ export function evaluateToolCall(
   if (APPROVED_PROVIDER_READ_TOOL.test(tool.toolName)) return { allowed: true, reason: "approved read-only provider operation", substantive };
   const executeOperation = tool.toolName.match(CONTEXT_MODE_EXECUTE_TOOL)?.[1]?.toLowerCase();
   if (executeOperation) {
-    const decision = evaluateContextModeExecute(executeOperation, input, workspace, ledger.authority);
+    const decision = evaluateContextModeExecute(executeOperation, input, workspace);
     recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: summarizeInput(input), action: decision.allowed ? "allowed" : "blocked", reason: decision.reason });
     return { ...decision, substantive };
+  }
+  if (tool.toolName === "intercom" && input.action === "list-cwd") {
+    const allowed = input.cwd === undefined || (typeof input.cwd === "string" && isInsideWorkspace(workspace, input.cwd));
+    const reason = allowed ? "workspace-scoped session discovery" : "session discovery must stay inside the assigned workspace";
+    recordPolicyEvent(ledger, { toolName: tool.toolName, action: allowed ? "allowed" : "blocked", reason });
+    return { allowed, reason, substantive };
   }
   if (FINALIZATION_TOOL.test(tool.toolName)) {
     recordPolicyEvent(ledger, { toolName: tool.toolName, action: "allowed", reason: "structured finalization after mandatory method activation" });

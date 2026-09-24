@@ -89,6 +89,23 @@ test("approved validation and inherited default read tools remain available", ()
   expect(reviewer.toolCall("ffgrep", { pattern: "persona_contract", path: "extensions/" }).allowed).toBe(true);
 });
 
+test("persona context batches permit only bounded read-only commands in the workspace", () => {
+  for (const role of ["implementation-engineer", "staff-reviewer"] as const) {
+    const runtime = activatedRuntime(role);
+    const batch = { commands: [{ label: "status", command: "git status --short" }, { label: "files", command: "rg mark Sources" }], cwd: root };
+    expect(runtime.toolCall("context_mode_ctx_batch_execute", batch).allowed).toBe(true);
+    for (const command of [...adversarialCommands, "cargo fmt", "git status && git push"]) {
+      expect(runtime.toolCall("context_mode_ctx_batch_execute", { commands: [{ label: "unsafe", command }] }).allowed, `${role} unexpectedly allowed: ${command}`).toBe(false);
+    }
+    expect(runtime.toolCall("context_mode_ctx_batch_execute", { commands: [{ label: "outside", command: "pwd" }], cwd: "/etc" }).allowed).toBe(false);
+    expect(runtime.toolCall("context_mode_ctx_batch_execute", { commands: Array(9).fill({ label: "status", command: "git status" }) }).allowed).toBe(false);
+    expect(runtime.toolCall("context_mode_ctx_batch_execute", { commands: [{ label: "missing" }] }).allowed).toBe(false);
+    expect(runtime.toolCall("intercom", { action: "list-cwd", cwd: root }).allowed).toBe(true);
+    expect(runtime.toolCall("intercom", { action: "list-cwd", cwd: "/etc" }).allowed).toBe(false);
+    expect(runtime.toolCall("intercom", { action: "send", message: "unsafe" }).allowed).toBe(false);
+  }
+});
+
 test("writer and reviewer can run bounded Rust validation commands", () => {
   const commands = [
     "cargo test --workspace --all-features",
