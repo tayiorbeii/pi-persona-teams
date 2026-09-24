@@ -140,6 +140,32 @@ describe("host-observed provider routing", () => {
     }
   });
 
+  test("implementation writer may read only a bounded editable source range without provider failure", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "persona-edit-read-"));
+    try {
+      const writer = new PersonaChildRuntime({
+        identity: { runtimeName: "persona-team.implementation-engineer", runId: "edit-read", childIndex: 0 },
+        personaPath: join(root, "agents", "implementation-engineer.md"),
+        workspace,
+        attestationDir: join(workspace, "attestations"),
+        toolNames: ["jcodemunch_get_symbol_source"],
+      });
+      const source = join(workspace, "src", "Window.swift");
+      expect(writer.toolCall("read", { path: source, offset: 1, limit: 160 })).toMatchObject({ allowed: true });
+      expect(writer.toolCall("read", { path: source, offset: 1 })).toMatchObject({ allowed: false });
+      expect(writer.toolCall("read", { path: source, offset: 1, limit: 161 })).toMatchObject({ allowed: false });
+      expect(writer.toolCall("read", { path: source, offset: 0, limit: 10 })).toMatchObject({ allowed: false });
+      expect(writer.toolCall("read", { path: join(workspace, "extensions", "guard.ts"), offset: 1, limit: 10 })).toMatchObject({ allowed: false });
+      expect(writer.toolCall("read", { path: join(workspace, "..", "outside.swift"), offset: 1, limit: 10 })).toMatchObject({ allowed: false });
+      expect(writer.handle({ action: "status" }).status?.providers.native).toMatchObject({ uses: 1, fallbackUses: 0 });
+
+      const reviewer = admittedChild(workspace);
+      expect(reviewer.toolCall("read", { path: source, offset: 1, limit: 10 })).toMatchObject({ allowed: false });
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
   test("one correlated provider failure grants exactly one native fallback", () => {
     const workspace = mkdtempSync(join(tmpdir(), "persona-provider-failure-"));
     try {

@@ -105,6 +105,16 @@ function isProtectedPath(workspace: string, candidate: string): boolean {
   return /^(?:\.pi-persona|agents|extensions)(?:\/|$)|^(?:package\.json|tsconfig\.json)$/.test(normalized);
 }
 
+// Exact current text is needed before an edit. Keep this exception narrower than
+// general code exploration: one bounded source-file range in the writable workspace.
+export function isBoundedEditableSourceRead(workspace: string, input: Record<string, unknown>): boolean {
+  const { path, offset, limit } = input;
+  return typeof path === "string" && /\.(?:c|cc|cpp|cs|go|java|js|jsx|mjs|py|rb|rs|swift|ts|tsx|vue|svelte)$/i.test(path)
+    && Number.isInteger(offset) && (offset as number) >= 1
+    && Number.isInteger(limit) && (limit as number) >= 1 && (limit as number) <= 160
+    && isInsideWorkspace(workspace, path) && !isProtectedPath(workspace, path);
+}
+
 function isPlanningArtifact(workspace: string, candidate: string): boolean {
   const normalized = workspaceRelativePath(workspace, candidate);
   return /^(?:plans|docs\/plans|docs\/testing|docs\/reviews)(?:\/|$)/.test(normalized);

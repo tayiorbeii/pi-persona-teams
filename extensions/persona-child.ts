@@ -3,7 +3,7 @@ import { attestationDirectory, createAttestation, writeAttestation, type Persona
 import { readChildIdentity, personaFileFromIdentity, packageRootFromChildExtension, type ChildIdentity } from "./internal/child-identity.ts";
 import { completeLedger, createLedger, activateMethod, ledgerDeficiencies, recordDisposition, recordPolicyEvent, type PersonaEvidence, type PersonaLedger } from "./internal/ledger.ts";
 import { parsePersonaFile, validatePersonaFile, type PersonaFile } from "./internal/persona-file.ts";
-import { evaluateToolCall, type PolicyDecision } from "./internal/role-policy.ts";
+import { evaluateToolCall, isBoundedEditableSourceRead, type PolicyDecision } from "./internal/role-policy.ts";
 import { ProviderObserver, type ProviderToolDescriptor } from "./internal/provider-observer.ts";
 
 export interface PersonaContractStatus {
@@ -136,7 +136,10 @@ export class PersonaChildRuntime {
     }
     const fingerprint = toolFingerprint(toolName, input);
     let fallbackGranted = false;
-    if (isNativeCodeRead(toolName, input) && this.providerObserver.availability("jcodemunch") !== "unavailable") {
+    const exactEditRead = /^(?:read|read_file)$/i.test(toolName)
+      && this.persona.contract.authority === "implementation-writer"
+      && isBoundedEditableSourceRead(this.workspace, input);
+    if (isNativeCodeRead(toolName, input) && !exactEditRead && this.providerObserver.availability("jcodemunch") !== "unavailable") {
       if (this.providerObserver.shouldRedirect("jcodemunch", fingerprint)) {
         const reason = "jCodeMunch is available for this code-orientation operation; use it before broad native exploration";
         recordPolicyEvent(this.ledger, { toolName, inputSummary: fingerprint.slice(0, 160), action: "blocked", reason });
