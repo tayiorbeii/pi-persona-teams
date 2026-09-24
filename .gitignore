@@ -13,3 +13,6 @@ build/
 .pi-subagents/
 .pi/
 .DS_Store
+.claude/edit-cache/
+.omx/
+.research-cache/
