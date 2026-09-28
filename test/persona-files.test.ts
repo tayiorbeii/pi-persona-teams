@@ -47,11 +47,11 @@ describe("independent persona files", () => {
       expect(source, role).toContain("inheritProjectContext: true");
       expect(source, role).toContain("inheritSkills: true");
       expect(source, role).toContain("subagentOnlyExtensions: ../extensions/persona-child.ts");
-      expect(source, role).toContain("timeoutMs: 600000");
-      expect(source, role).toContain('turnBudget: {"maxTurns":8,"graceTurns":1}');
-      expect(source, role).toContain('toolBudget: {"soft":12,"hard":18,"block":["*"]}');
+      expect(source, role).toContain("timeoutMs: 2147483647");
+      expect(source, role).not.toMatch(/^turnBudget:|^toolBudget:/m);
       expect(source, role).toContain("## Runtime Resource Gate");
       expect(source, role).toContain("persona_contract.status");
+      expect(source, role).toContain("assigned Git repository");
       expect(source, role).toContain("octocode-research");
       expect(source, role).toContain("npx -y octocode@18.3.0");
       expect(source, role).toContain("cannot override this exact-version policy");

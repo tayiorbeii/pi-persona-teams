@@ -16,11 +16,8 @@ import { waitForDelegationResponse, type DelegationWaitEventNames, type Launched
 let requestSequence = 0;
 
 /**
- * Overall (non-sliding) cap for one delegation: per-call `responseTimeoutMs`
- * or this default, clamped to [1s, 2^31-1]. The child run bound stays
- * waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS. Cap expiry is distinct from the
- * no-progress expiry: the error states whether the child was still making
- * progress when the cap was reached.
+ * Fallback bound for older bridges that cannot report progress. Current
+ * bridges use sliding inactivity instead of a wall-clock deadline.
  */
 export const PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS = 600_000;
 
@@ -41,13 +38,7 @@ export const PERSONA_DELEGATION_ACK_TIMEOUT_MS = 30_000;
  * toolCount, tokens, age). Ignored on bridges without the update event.
  */
 export const PERSONA_DELEGATION_PROGRESS_TIMEOUT_MS = 120_000;
-/**
- * Child runs must terminal strictly before the parent gives up, so typed
- * bridge terminals (timed_out/cancelled) arrive instead of the parent's
- * generic timeout racing them. The per-call child bound is
- * waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS, clamped to >=1s and <=2^31-1
- * (the bridge validates integer timeoutMs in that range).
- */
+/** Older bridges need the child to terminate before the parent's fallback wait. */
 export const PERSONA_CHILD_TIMEOUT_MARGIN_MS = 30_000;
 
 /**
@@ -92,7 +83,7 @@ function toolParameters(): Record<string, unknown> {
       action: { type: "string", enum: ["list", "doctor", "run"] },
       persona: { type: "string" },
       task: { type: "string" },
-      responseTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Overall cap for this delegation: the parent wait and the child run deadline (default 600000). A child that stops reporting progress is cancelled sooner via progressTimeoutMs." },
+      responseTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Legacy alias for the sliding inactivity bound (default 120000). On older bridges without updates, this is the fallback total wait bound (default 600000). Prefer progressTimeoutMs." },
       ackTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Fail fast when the bridge does not acknowledge acceptance within this bound (default 30000). The launch never started, so retrying with the same runKey is safe." },
       progressTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Cancel the child when no progress update arrives for this long (default 120000); the bound resets on every progress update." },
       runKey: { type: "string", description: "Idempotency key: re-running with the same runKey attaches to the in-flight child instead of launching a duplicate. Default: a digest of persona+task." },
@@ -136,7 +127,7 @@ export function buildDelegationRequest(input: PersonaDelegationIdentity & { agen
   };
 }
 
-/** Parent wait bound for one delegation: per-call value, else the 600s default, clamped to [1s, 2^31-1]. */
+/** Fallback wait on bridges without progress events: per-call value or 600s. */
 export function resolveWaitMs(responseTimeoutMs?: number): number {
   return Math.max(1_000, Math.min(responseTimeoutMs ?? PERSONA_DELEGATION_RESPONSE_TIMEOUT_MS, 2_147_483_647));
 }
@@ -151,9 +142,9 @@ export function resolveProgressTimeoutMs(progressTimeoutMs?: number): number {
   return Math.max(1_000, Math.min(progressTimeoutMs ?? PERSONA_DELEGATION_PROGRESS_TIMEOUT_MS, 2_147_483_647));
 }
 
-/** Child run bound for the same delegation: strictly inside the parent wait so bridge terminals win the race. */
-export function resolveChildTimeoutMs(waitMs: number): number {
-  return Math.min(Math.max(1_000, waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS), 2_147_483_647);
+/** Current bridges use the largest supported runtime bound; older bridges must terminal before the parent fallback. */
+export function resolveChildTimeoutMs(waitMs?: number): number {
+  return waitMs === undefined ? 2_147_483_647 : Math.min(Math.max(1_000, waitMs - PERSONA_CHILD_TIMEOUT_MARGIN_MS), 2_147_483_647);
 }
 
 /** The caller's idempotency key, or a stable digest of agent+task so plain retries dedupe. */
@@ -217,7 +208,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     task,
     context: request.context,
     workspace,
-    timeoutMs: resolveChildTimeoutMs(waitMs),
+    timeoutMs: resolveChildTimeoutMs(typeof delegation.SUBAGENT_DELEGATION_UPDATE_EVENT === "string" ? undefined : waitMs),
   });
 
   const eventNames: DelegationWaitEventNames = {
@@ -236,7 +227,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     expectedLaunchContractDigest,
     waitMs,
     ackTimeoutMs: resolveAckTimeoutMs(request.ackTimeoutMs),
-    progressTimeoutMs: resolveProgressTimeoutMs(request.progressTimeoutMs),
+    progressTimeoutMs: resolveProgressTimeoutMs(request.progressTimeoutMs ?? request.responseTimeoutMs),
     verificationPolicy,
     onLaunched: (ack) => {
       launchedAcks.set(key, ack);

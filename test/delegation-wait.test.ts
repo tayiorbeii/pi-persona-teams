@@ -101,9 +101,10 @@ describe("delegation request wire format", () => {
 });
 
 describe("per-call delegation deadline resolution", () => {
-  test("defaults to the 600s parent budget and keeps the child strictly inside it", () => {
-    expect(resolveWaitMs(undefined)).toBe(600_000);
-    expect(resolveChildTimeoutMs(resolveWaitMs(undefined))).toBe(570_000);
+  test("uses a long runtime safety bound while progress-enabled runs use sliding inactivity", () => {
+    expect(resolveWaitMs(undefined)).toBe(600_000); // fallback for older bridges without updates
+    expect(resolveChildTimeoutMs()).toBe(2_147_483_647);
+    expect(resolveChildTimeoutMs(resolveWaitMs(undefined))).toBe(570_000); // older bridge
   });
 
   test("honors a per-call override for both parent wait and child run bound", () => {
@@ -215,9 +216,9 @@ describe("delegation response waiter", () => {
     expect(ackWaits.length).toBe(1);
   });
 
-  test("timeout emits a bridge cancel for the attempt identity and attaches the captured runId to the error", async () => {
+  test("inactivity emits a bridge cancel for the attempt identity and attaches the captured runId to the error", async () => {
     const bus = new FakeDelegationBus();
-    const { pending, waits } = startWaiter(bus, { waitMs: 15 });
+    const { pending, waits } = startWaiter(bus, { progressTimeoutMs: 15 });
     bus.emit(fullEventNames.update, { ...identity, runId: "child-run-4" });
     expect(waits[0].runId).toBe("child-run-4");
 
@@ -225,12 +226,12 @@ describe("delegation response waiter", () => {
       () => { throw new Error("waiter should have timed out"); },
       (caught: Error) => caught,
     );
-    expect(error.message).toContain("timed out waiting for pi-subagents delegation response after 15ms");
+    expect(error.message).toContain("no progress from pi-subagents delegation for 15ms");
     expect(error.message).toContain("child runId child-run-4");
-    const fields = error as Error & { runId?: string; cancelled?: boolean; timeoutMs?: number; requestId?: string; nodeId?: string };
+    const fields = error as Error & { runId?: string; cancelled?: boolean; progressTimeoutMs?: number; requestId?: string; nodeId?: string };
     expect(fields.runId).toBe("child-run-4");
     expect(fields.cancelled).toBe(true);
-    expect(fields.timeoutMs).toBe(15);
+    expect(fields.progressTimeoutMs).toBe(15);
     expect(fields.requestId).toBe(identity.requestId);
     expect(fields.nodeId).toBe(identity.nodeId);
 
@@ -239,9 +240,9 @@ describe("delegation response waiter", () => {
     expect(cancels[0]).toEqual({ requestId: identity.requestId, ownerRunId: identity.ownerRunId, nodeId: identity.nodeId });
   });
 
-  test("timeout without any runId update still cancels and reports that no runId was captured", async () => {
+  test("inactivity without any runId update still cancels and reports that no runId was captured", async () => {
     const bus = new FakeDelegationBus();
-    const { pending } = startWaiter(bus, { waitMs: 10 });
+    const { pending } = startWaiter(bus, { progressTimeoutMs: 10 });
     const error = await pending.then(
       () => { throw new Error("waiter should have timed out"); },
       (caught: Error) => caught,
@@ -419,25 +420,20 @@ describe("two-clock delegation liveness", () => {
     expect(bus.emittedEvents(fullEventNames.cancel).length).toBe(1);
   });
 
-  test("the overall cap fires with a distinct message while the child is still reporting progress", async () => {
+  test("active children continue past the legacy cap and complete without cancellation", async () => {
     const bus = new FakeDelegationBus();
-    const { pending } = startWaiter(bus, { waitMs: 40, progressTimeoutMs: 5_000 });
+    const { pending } = startWaiter(bus, { waitMs: 40, progressTimeoutMs: 55 });
     const progressInterval = setInterval(() => {
       bus.emit(fullEventNames.update, { ...identity, runId: "child-run-10", currentTool: "bash", tokens: 100, toolCount: 2 });
     }, 10);
-    const error = await pending.then(
-      () => { throw new Error("waiter should have hit the overall cap"); },
-      (caught: Error) => caught,
-    ).finally(() => clearInterval(progressInterval));
-    expect(error.message).toContain("timed out waiting for pi-subagents delegation response after 40ms");
-    expect(error.message).toContain("overall cap reached while the child was still making progress");
-    expect(error.message).not.toContain("no progress");
-    const fields = error as Error & { status?: string; timeoutMs?: number; cancelled?: boolean; runId?: string };
-    expect(fields.status).toBe("timeout");
-    expect(fields.timeoutMs).toBe(40);
-    expect(fields.cancelled).toBe(true);
-    expect(fields.runId).toBe("child-run-10");
-    expect(bus.emittedEvents(fullEventNames.cancel).length).toBe(1);
+    try {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 85));
+      bus.emit(fullEventNames.response, { ...identity, status: "completed", runId: "child-run-10", launchContractDigest: "expected-digest", result: { kind: "text", text: "done" } });
+      expect((await pending).output).toBe("done");
+      expect(bus.emittedEvents(fullEventNames.cancel)).toHaveLength(0);
+    } finally {
+      clearInterval(progressInterval);
+    }
   });
 
   test("bridges without update support keep cap-only behavior and never fail the ack bound", async () => {

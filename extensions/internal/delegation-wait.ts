@@ -14,15 +14,11 @@
  *   child terminals as `cancelled` instead of being orphaned.
  * - `…:response` is the single terminal event per attempt.
  *
- * Liveness is tracked by three independent clocks: an ack bound
- * (`ackTimeoutMs`) that fails fast when the first matching started/update
- * event never arrives (the launch never started, so retrying with the same
- * idempotency key is safe); a sliding no-progress bound
- * (`progressTimeoutMs`) re-armed by every matching started/update event,
- * whose error carries the last progress snapshot; and the non-sliding
- * overall cap (`waitMs`), whose error distinguishes a cap reached while the
- * child was still making progress from a stalled child. The ack and
- * progress bounds arm only when the bridge exposes the update event.
+ * Current bridges use an ack bound (`ackTimeoutMs`) for launch acceptance
+ * and a sliding inactivity bound (`progressTimeoutMs`) re-armed by matching
+ * started/update events. The latter carries the last progress snapshot.
+ * Older bridges without update support cannot distinguish a stalled child;
+ * only they use the fallback total wait (`waitMs`).
  *
  * Older bridges may not export the started/update/cancel event constants at
  * all; every optional event degrades gracefully when its name is missing.
@@ -300,25 +296,23 @@ export function waitForDelegationResponse(options: {
         ));
       }, bound);
     }
-    capTimer = setTimeout(() => {
-      if (settled) return;
-      // The cap is the only non-sliding clock: when it expires while the
-      // child was still reporting progress inside the no-progress bound,
-      // say so explicitly instead of blaming a stall.
-      const childProgressing = progressBoundMs !== undefined && lastSignalAt > 0 && Date.now() - lastSignalAt < progressBoundMs;
-      giveUp(enrichedError(
-        childProgressing
-          ? `timed out waiting for pi-subagents delegation response after ${waitMs}ms: overall cap reached while the child was still making progress${runIdTail()}`
-          : `timed out waiting for pi-subagents delegation response after ${waitMs}ms${runIdTail()}`,
-        identity,
-        {
-          timeoutMs: waitMs,
-          status: "timeout",
-          cancelled: true,
-          ...(capturedRunId ? { runId: capturedRunId } : {}),
-        },
-      ));
-    }, waitMs);
+    // Older bridges cannot report liveness; retain their bounded fallback.
+    // With progress events, only the ack and sliding inactivity clocks apply.
+    if (!progressSupported) {
+      capTimer = setTimeout(() => {
+        if (settled) return;
+        giveUp(enrichedError(
+          `timed out waiting for pi-subagents delegation response after ${waitMs}ms${runIdTail()}`,
+          identity,
+          {
+            timeoutMs: waitMs,
+            status: "timeout",
+            cancelled: true,
+            ...(capturedRunId ? { runId: capturedRunId } : {}),
+          },
+        ));
+      }, waitMs);
+    }
 
     try {
       bus.emit(eventNames.request, delegationRequest);
