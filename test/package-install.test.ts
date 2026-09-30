@@ -42,4 +42,4 @@ test("npm pack tarball installs and rolls back in an isolated prefix", () => {
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
-});
+}, 120_000); // npm pack + isolated install routinely exceeds the 5s default.
