@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { dirname, join, resolve } from "node:path";
+import { statSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   createSingleFlight,
@@ -88,10 +89,28 @@ function toolParameters(): Record<string, unknown> {
       progressTimeoutMs: { type: "number", minimum: 1_000, maximum: 2_147_483_647, description: "Cancel the child when no progress update arrives for this long (default 120000); the bound resets on every progress update." },
       runKey: { type: "string", description: "Idempotency key: re-running with the same runKey attaches to the in-flight child instead of launching a duplicate. Default: a digest of persona+task." },
       mode: { type: "string", enum: ["wait", "launch"], description: "launch returns a run handle as soon as the bridge accepts the attempt; wait (default) blocks for terminal completion." },
+      workspace: { type: "string", description: "Directory the persona works in and is scoped to (default: the parent's cwd). Point this at the checkout or frozen revision being researched, e.g. a /tmp worktree; the child's cwd, retrieval providers, write boundary, and attestations all follow it." },
       verificationPolicy: { type: "string", enum: ["advisory", "strict"], description: "advisory (default) returns completed output with explicit warnings when nonessential evidence is missing or mismatched; strict fails closed." },
     },
     required: ["action"],
   };
+}
+
+/**
+ * Resolves the persona's assigned workspace. The child's repository boundary,
+ * context-mode/jCodeMunch project root, and attestation directory all derive
+ * from this cwd, so research against another checkout must target it here
+ * rather than inherit the parent's cwd.
+ */
+export function resolvePersonaWorkspace(requested: string | undefined, parentCwd: string = process.cwd()): { ok: true; workspace: string } | { ok: false; error: string } {
+  if (requested === undefined || requested.trim() === "") return { ok: true, workspace: parentCwd };
+  const workspace = isAbsolute(requested) ? resolve(requested) : resolve(parentCwd, requested);
+  try {
+    if (!statSync(workspace).isDirectory()) return { ok: false, error: `workspace is not a directory: ${workspace}` };
+  } catch {
+    return { ok: false, error: `workspace does not exist: ${workspace}` };
+  }
+  return { ok: true, workspace };
 }
 
 function toolsFromPi(pi: any): Array<{ name?: string; description?: string; source?: string; provenance?: string }> {
@@ -251,7 +270,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
  * a duplicate child.
  */
 export async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest): Promise<DelegationResult> {
-  const key = `${request.verificationPolicy ?? "advisory"}:${idempotencyKeyFor(request)}`;
+  const key = `${request.verificationPolicy ?? "advisory"}:${workspace}:${idempotencyKeyFor(request)}`;
   const existing = pendingDelegations.get(key);
   if (existing) {
     const ack = launchedAcks.get(key);
@@ -285,20 +304,26 @@ export default function personaParentExtension(pi: any): void {
     label: "Persona Team",
     description: "List, diagnose, or run a canonical pi-persona-teams persona.",
     parameters: toolParameters(),
-    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; responseTimeoutMs?: number; ackTimeoutMs?: number; progressTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch"; verificationPolicy?: "advisory" | "strict" }) {
+    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; workspace?: string; responseTimeoutMs?: number; ackTimeoutMs?: number; progressTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch"; verificationPolicy?: "advisory" | "strict" }) {
       if (params.action === "list") {
         const result = listPersonas(root);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
       }
+      const resolved = resolvePersonaWorkspace(params.workspace);
+      if (!resolved.ok) {
+        const result = { accepted: false, errors: [resolved.error] };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
+      }
+      const workspace = resolved.workspace;
       if (params.action === "doctor") {
         const tools = toolsFromPi(pi);
         const result = await personaDoctor({
           packageRoot: root,
-          workspace: process.cwd(),
+          workspace,
           toolNames: tools.map((tool) => tool.name ?? ""),
           toolDescriptors: tools,
           discover: discoverThroughPiSubagents,
-          attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(process.cwd(), ".pi-persona", "attestations"),
+          attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(workspace, ".pi-persona", "attestations"),
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
       }
@@ -313,17 +338,17 @@ export default function personaParentExtension(pi: any): void {
       const attemptStartedAt = Date.now();
       const result = await runPersona({
         packageRoot: root,
-        workspace: process.cwd(),
+        workspace,
         ...(params.responseTimeoutMs !== undefined ? { responseTimeoutMs: params.responseTimeoutMs } : {}),
         ...(params.ackTimeoutMs !== undefined ? { ackTimeoutMs: params.ackTimeoutMs } : {}),
         ...(params.progressTimeoutMs !== undefined ? { progressTimeoutMs: params.progressTimeoutMs } : {}),
         ...(params.runKey !== undefined ? { idempotencyKey: params.runKey } : {}),
         ...(params.mode === "launch" ? { mode: "launch" as const } : {}),
-        attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(process.cwd(), ".pi-persona", "attestations"),
+        attestationDir: process.env.PI_PERSONA_ATTESTATION_DIR ?? join(workspace, ".pi-persona", "attestations"),
         attemptStartedAt,
         requireAttemptBinding: process.env.PI_PERSONA_REQUIRE_ATTEMPT_BINDING !== "0",
         verificationPolicy: params.verificationPolicy ?? "advisory",
-        delegate: (request) => delegateThroughPiSubagents(pi, process.cwd(), request),
+        delegate: (request) => delegateThroughPiSubagents(pi, workspace, request),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
     },
