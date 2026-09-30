@@ -28,7 +28,7 @@ export interface DelegationRequest {
   task: string;
   context: "fresh";
   acceptance?: unknown;
-  /** Per-call bound for this delegation: parent wait and child run deadline (defaults to 600s). */
+  /** Legacy alias for sliding inactivity; older bridges use it as a fallback total wait. */
   responseTimeoutMs?: number;
   /** Fast-fail bound for the bridge acceptance ack (defaults to 30s). */
   ackTimeoutMs?: number;
@@ -91,7 +91,7 @@ export interface PersonaFacadeOptions {
   workspace?: string;
   discover?: (cwd: string) => Promise<PersonaDiscovery[]> | PersonaDiscovery[];
   delegate?: (request: DelegationRequest) => Promise<DelegationResult>;
-  /** Per-call delegation bound forwarded to the delegate seam (defaults to 600s). */
+  /** Legacy alias for sliding inactivity, forwarded to the delegate seam. */
   responseTimeoutMs?: number;
   /** Fast-fail delegation ack bound forwarded to the delegate seam (defaults to 30s). */
   ackTimeoutMs?: number;

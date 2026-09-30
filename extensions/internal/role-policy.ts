@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import * as nodeFs from "node:fs";
-import { basename, dirname, resolve, relative, isAbsolute } from "node:path";
+import { basename, dirname, join, resolve, relative, isAbsolute } from "node:path";
 import type { PersonaLedger } from "./ledger.ts";
 import { missingActivations, recordPolicyEvent } from "./ledger.ts";
 
@@ -29,7 +29,7 @@ const APPROVED_PROVIDER_READ_TOOL = new RegExp(
 );
 // context-mode execute tools run caller-supplied code, so they are gated by input rather than by name:
 // shell code and batch commands pass the read-only `bash` gate for every role; JS/TS analysis code must stay
-// inside a static capability screen and may only read files inside the assigned workspace.
+// inside a static capability screen and may only read files inside the assigned repository.
 const CONTEXT_MODE_EXECUTE_TOOL = /^(?:ctx_|context[-_]?mode_(?:ctx_)?|mcp__context[-_]?mode__(?:ctx_)?|mcp:context[-_]?mode[:/](?:ctx_)?)(execute_file|execute|batch_execute)$/i;
 const ANALYSIS_LANGUAGE = /^(?:javascript|js|typescript|ts)$/i;
 const SHELL_LANGUAGE = /^(?:shell|sh|bash|zsh)$/i;
@@ -83,6 +83,18 @@ function canonicalPath(candidate: string): string | undefined {
   }
 }
 
+function repositoryRoot(workspace: string): string {
+  const workspacePath = canonicalPath(workspace) ?? resolve(workspace);
+  let current = workspacePath;
+  while (true) {
+    // A worktree or submodule has a .git file rather than a directory.
+    if (existsSync(join(current, ".git"))) return current;
+    const parent = dirname(current);
+    if (parent === current) return workspacePath; // Non-git workspace: retain its original boundary.
+    current = parent;
+  }
+}
+
 export function isInsideWorkspace(workspace: string, candidate: string): boolean {
   const workspacePath = canonicalPath(workspace);
   const absolute = isAbsolute(candidate) ? resolve(candidate) : resolve(workspace, candidate);
@@ -90,6 +102,10 @@ export function isInsideWorkspace(workspace: string, candidate: string): boolean
   if (!workspacePath || !candidatePath) return false;
   const rel = relative(workspacePath, candidatePath);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function isInsideRepository(workspace: string, candidate: string): boolean {
+  return isInsideWorkspace(repositoryRoot(workspace), isAbsolute(candidate) ? candidate : resolve(workspace, candidate));
 }
 
 function workspaceRelativePath(workspace: string, candidate: string): string {
@@ -140,8 +156,8 @@ function commandAllowedForImplementation(command: string): boolean {
 
 // context-mode shell runs outside the persona's bash hook, so every role gets the read-only command gate here.
 function evaluateContextModeExecute(operation: string, input: Record<string, unknown>, workspace: string): { allowed: boolean; reason: string } {
-  if (input.cwd !== undefined && (typeof input.cwd !== "string" || !isInsideWorkspace(workspace, input.cwd))) {
-    return { allowed: false, reason: "context-mode cwd must stay inside the assigned workspace" };
+  if (input.cwd !== undefined && (typeof input.cwd !== "string" || !isInsideRepository(workspace, input.cwd))) {
+    return { allowed: false, reason: "context-mode cwd must stay inside the assigned repository" };
   }
 
   if (operation === "batch_execute") {
@@ -158,8 +174,8 @@ function evaluateContextModeExecute(operation: string, input: Record<string, unk
 
   if (operation === "execute_file") {
     const path = input.path;
-    if (typeof path !== "string" || path.trim() === "" || !isInsideWorkspace(workspace, path)) {
-      return { allowed: false, reason: "context-mode execute_file path must be explicit and inside the assigned workspace; ask the parent to place handoff inputs (issue snapshots, plans) inside the checkout rather than /tmp" };
+    if (typeof path !== "string" || path.trim() === "" || !isInsideRepository(workspace, path)) {
+      return { allowed: false, reason: "context-mode execute_file path must be explicit and inside the assigned repository; ask the parent to place external handoff inputs inside the checkout rather than /tmp" };
     }
   }
 
@@ -207,8 +223,8 @@ export function evaluateToolCall(
     return { ...decision, substantive };
   }
   if (tool.toolName === "intercom" && input.action === "list-cwd") {
-    const allowed = input.cwd === undefined || (typeof input.cwd === "string" && isInsideWorkspace(workspace, input.cwd));
-    const reason = allowed ? "workspace-scoped session discovery" : "session discovery must stay inside the assigned workspace";
+    const allowed = input.cwd === undefined || (typeof input.cwd === "string" && isInsideRepository(workspace, input.cwd));
+    const reason = allowed ? "repository-scoped session discovery" : "session discovery must stay inside the assigned repository";
     recordPolicyEvent(ledger, { toolName: tool.toolName, action: allowed ? "allowed" : "blocked", reason });
     return { allowed, reason, substantive };
   }
@@ -225,14 +241,14 @@ export function evaluateToolCall(
   const authority = ledger.authority;
   const candidatePaths = pathsFromInput(input);
   if (WRITE_TOOL.test(tool.toolName)) {
-    if (!candidatePaths || candidatePaths.some((candidate) => !isInsideWorkspace(workspace, candidate))) {
-      const reason = "every write path must be explicit and inside the assigned workspace; a report/output path routed outside the checkout (e.g. an external pi-subagents output directory) must be reassigned to an in-checkout path instead";
+    if (!candidatePaths || candidatePaths.some((candidate) => !isInsideRepository(workspace, candidate))) {
+      const reason = "every write path must be explicit and inside the assigned repository; an external report/output path must be reassigned to an in-repository path";
       recordPolicyEvent(ledger, { toolName: tool.toolName, action: "blocked", reason });
       return { allowed: false, reason, substantive };
     }
     const inputSummary = candidatePaths.join(", ").slice(0, 160);
     if (authority === "implementation-writer") {
-      if (candidatePaths.some((candidate) => isProtectedPath(workspace, candidate))) {
+      if (candidatePaths.some((candidate) => isProtectedPath(workspace, candidate) || isProtectedPath(repositoryRoot(workspace), candidate))) {
         const reason = "persona and enforcement files are protected during a product implementation";
         recordPolicyEvent(ledger, { toolName: tool.toolName, action: "blocked", inputSummary, reason });
         return { allowed: false, reason, substantive };
@@ -240,7 +256,7 @@ export function evaluateToolCall(
       recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary, action: "allowed", reason: "assigned implementation workspace" });
       return { allowed: true, reason: "assigned implementation workspace", substantive };
     }
-    if (["planning-read-only", "strategy-read-only", "independent-review-read-only", "release-prepare", "retrospective-read-only"].includes(authority) && candidatePaths.every((candidate) => isPlanningArtifact(workspace, candidate))) {
+    if (["planning-read-only", "strategy-read-only", "independent-review-read-only", "release-prepare", "retrospective-read-only"].includes(authority) && candidatePaths.every((candidate) => isPlanningArtifact(workspace, candidate) || isPlanningArtifact(repositoryRoot(workspace), candidate))) {
       recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary, action: "allowed", reason: "assigned planning artifact path" });
       return { allowed: true, reason: "assigned planning artifact path", substantive };
     }

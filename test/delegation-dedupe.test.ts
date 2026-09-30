@@ -84,6 +84,7 @@ describe("delegation idempotency", () => {
     const emitted = bus.requests();
     expect(emitted).toHaveLength(2);
     expect(emitted[0].task).toBe(request.task);
+    expect(emitted[0].timeoutMs).toBe(2_147_483_647); // progress-enabled bridge: no short child wall-clock cap
     expect(emitted[1].task).toContain("Strict verification requested");
     for (const entry of emitted) {
       expect(preflightInputs.some((input) => input.task === entry.task)).toBe(true);

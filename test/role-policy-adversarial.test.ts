@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PersonaChildRuntime } from "../extensions/persona-child.ts";
@@ -89,7 +89,7 @@ test("approved validation and inherited default read tools remain available", ()
   expect(reviewer.toolCall("ffgrep", { pattern: "persona_contract", path: "extensions/" }).allowed).toBe(true);
 });
 
-test("persona context batches permit only bounded read-only commands in the workspace", () => {
+test("persona context batches permit only bounded read-only commands in the repository", () => {
   for (const role of ["implementation-engineer", "staff-reviewer"] as const) {
     const runtime = activatedRuntime(role);
     const batch = { commands: [{ label: "status", command: "git status --short" }, { label: "files", command: "rg mark Sources" }], cwd: root };
@@ -230,6 +230,51 @@ test("read-only Octocode access excludes mutable versions, cloning, and unrelate
     "npx -y arbitrary-package --help",
   ]) {
     expect(runtime.toolCall("bash", { command }).allowed, `staff-reviewer unexpectedly allowed: ${command}`).toBe(false);
+  }
+});
+
+test("a persona launched in a subdirectory can inspect and work in sibling directories of the same repository", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "role-policy-repo-"));
+  const repo = join(temporaryRoot, "repo");
+  const workspace = join(repo, "apps", "extension");
+  const sibling = join(repo, "apps", "audit");
+  const outside = join(temporaryRoot, "outside");
+  mkdirSync(join(repo, ".git"), { recursive: true });
+  mkdirSync(workspace, { recursive: true });
+  mkdirSync(sibling, { recursive: true });
+  mkdirSync(outside);
+  symlinkSync(outside, join(sibling, "escape"), "dir");
+
+  try {
+    const reviewer = activatedRuntime("staff-reviewer", workspace);
+    expect(reviewer.toolCall("context-mode_ctx_execute", { language: "shell", code: "rg schema apps", cwd: repo }).allowed).toBe(true);
+    expect(reviewer.toolCall("context-mode_ctx_execute_file", { path: join(sibling, "source.ts"), language: "javascript", code: "console.log(FILE_CONTENT.length)" }).allowed).toBe(true);
+    expect(reviewer.toolCall("context-mode_ctx_execute_file", { path: join(outside, "source.ts"), language: "javascript", code: "console.log(FILE_CONTENT.length)" }).allowed).toBe(false);
+    expect(reviewer.toolCall("context-mode_ctx_execute_file", { path: join(sibling, "escape", "source.ts"), language: "javascript", code: "console.log(FILE_CONTENT.length)" }).allowed).toBe(false);
+    expect(reviewer.toolCall("write_file", { path: join(sibling, "source.ts"), content: "x" }).allowed).toBe(false);
+
+    const writer = activatedRuntime("implementation-engineer", workspace);
+    expect(writer.toolCall("write_file", { path: join(sibling, "source.ts"), content: "x" }).allowed).toBe(true);
+    expect(writer.toolCall("write_file", { path: join(outside, "source.ts"), content: "x" }).allowed).toBe(false);
+    expect(writer.toolCall("write_file", { path: join(sibling, "escape", "source.ts"), content: "x" }).allowed).toBe(false);
+    expect(writer.toolCall("write_file", { path: join(repo, "agents", "staff-reviewer.md"), content: "x" }).allowed).toBe(false);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("a nested Git worktree uses its own .git file as the boundary", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "role-policy-worktree-"));
+  const worktree = join(temporaryRoot, "worktree");
+  const nested = join(worktree, "apps", "extension");
+  mkdirSync(nested, { recursive: true });
+  writeFileSync(join(worktree, ".git"), "gitdir: ../metadata/worktrees/extension\n");
+  try {
+    const reviewer = activatedRuntime("staff-reviewer", nested);
+    expect(reviewer.toolCall("context_mode_ctx_execute", { language: "shell", code: "pwd", cwd: worktree }).allowed).toBe(true);
+    expect(reviewer.toolCall("context_mode_ctx_execute", { language: "shell", code: "pwd", cwd: temporaryRoot }).allowed).toBe(false);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
   }
 });
 
