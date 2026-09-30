@@ -16,9 +16,25 @@ export interface PolicyDecision {
   substantive?: boolean;
 }
 
-const READ_ONLY_COMMANDS = /^(?:pwd|ls(?:\s|$)|rg(?:\s|$)|grep(?:\s|$)|git\s+(?:status|log|show|diff|branch|rev-parse|ls-files|describe)(?:\s|$)|git\s+check-ignore(?:\s|$)|cat(?:\s|$)|head(?:\s|$)|tail(?:\s|$)|wc(?:\s|$)|bun\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|npm\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|node\s+--version(?:\s|$)|bun\s+--version(?:\s|$))/i;
+const READ_ONLY_COMMANDS = /^(?:pwd|ls(?:\s|$)|rg(?:\s|$)|grep(?:\s|$)|git\s+(?:status|log|show|diff|rev-parse|ls-files|ls-tree|cat-file|blame|grep|merge-base|rev-list|describe)(?:\s|$)|git\s+check-ignore(?:\s|$)|cat(?:\s|$)|head(?:\s|$)|tail(?:\s|$)|wc(?:\s|$)|bun\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|npm\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|node\s+--version(?:\s|$)|bun\s+--version(?:\s|$))/i;
 const MUTATING_COMMAND = /(?:^|\s)(?:rm|mv|cp|mkdir|touch|install|add|commit|checkout|switch|reset|restore|push|pull|merge|rebase|deploy|publish|chmod|tee)(?:\s|$)|(?:^|\s)(?:--output(?:=|\s)|-o\s)/i;
 const SHELL_CONTROL_SYNTAX = /[\r\n;&|`<>^]|\$\(|\$\{/;
+const SHELL_CONTROL_EXCEPT_PIPE = /[\r\n;&`<>^]|\$\(|\$\{|\|\|/;
+// Listing-only `git branch`; any other argument creates, renames, or deletes a branch.
+const GIT_BRANCH_LIST = /^git\s+branch(?:\s+(?:-a|-r|-v|-vv|--all|--remotes|--verbose|--show-current|--sort=\S+|--format=\S+|(?:--list|--contains|--no-contains|--merged|--no-merged|--points-at)(?:\s+[^-\s]\S*)?))*\s*$/i;
+// Git options that hand content to configured external programs or a pager.
+const GIT_EXTERNAL_PROGRAM = /^git\s.*(?:\s)(?:--ext-diff|--textconv|-O\S*|--open-files-in-pager\S*)(?:\s|$)/i;
+// Stages allowed after the first command of a pipeline: stdin-only filters with no file-writing or exec options.
+const PIPE_FILTER = [
+  /^nl(?:\s+-b\s?a)?$/,
+  /^sed\s+-n\s+(['"]?)\d+(?:,\d+)?p\1$/,
+  /^(?:head|tail)(?:\s+-n\s*\d+|\s+-\d+)?$/,
+  /^wc(?:\s+-[lwc])?$/,
+  /^sort(?:\s+-[nru]+)?$/,
+  /^uniq(?:\s+-c)?$/,
+  /^grep(?:\s+-[invcwFE]+)*\s+(?:'[^']*'|"[^"$\\]*"|[^\s'"]+)$/,
+];
+const READ_ONLY_SHELL_GUIDANCE = "run one read-only command per call (no ;, &&, ||, redirects, or substitution); pipes may only feed nl, sed -n 'A,Bp', head, tail, wc, sort, uniq, or grep. Revision reads such as `git show <rev>:<path>`, `git ls-tree -r <rev>`, `git diff <a> <b>`, and `git cat-file -p <rev>:<path>` are allowed";
 const SHELL_INTERPRETER = /(?:^|\s)(?:sh|bash|zsh|dash|fish|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh|python(?:\d+(?:\.\d+)*)?|py|node)(?:\s|$)/i;
 const CONTEXT_MODE_READ_OPERATION = "(?:search|index|fetch_and_index)";
 const JCODEMUNCH_READ_OPERATION = "(?:resolve_repo|plan_turn|search_symbols|search_text|get_symbol_source|get_file_outline|find_references|find_importers|get_blast_radius|get_changed_symbols|get_context_bundle|get_ranked_context|assemble_task_context|index_file|index_repo)";
@@ -136,9 +152,40 @@ function isPlanningArtifact(workspace: string, candidate: string): boolean {
   return /^(?:plans|docs\/plans|docs\/testing|docs\/reviews)(?:\/|$)/.test(normalized);
 }
 
+/** Splits on unquoted `|`; returns undefined when quotes are unbalanced. */
+function pipelineStages(command: string): string[] | undefined {
+  const stages: string[] = [];
+  let quote: string | undefined;
+  let current = "";
+  for (const char of command) {
+    if (quote) {
+      if (char === quote) quote = undefined;
+    } else if (char === "'" || char === '"') {
+      quote = char;
+    } else if (char === "|") {
+      stages.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (quote) return undefined;
+  stages.push(current.trim());
+  return stages;
+}
+
 function commandAllowedForReadOnly(command: string): boolean {
   const trimmed = command.trim();
-  if (!trimmed || SHELL_CONTROL_SYNTAX.test(trimmed)) return false;
+  if (!trimmed) return false;
+  if (SHELL_CONTROL_SYNTAX.test(trimmed)) {
+    if (SHELL_CONTROL_EXCEPT_PIPE.test(trimmed)) return false;
+    const stages = pipelineStages(trimmed);
+    if (!stages || stages.length < 2 || stages.some((stage) => !stage)) return false;
+    const [first, ...filters] = stages;
+    return !first.includes("|") && commandAllowedForReadOnly(first) && filters.every((filter) => PIPE_FILTER.some((pattern) => pattern.test(filter)));
+  }
+  if (/^git\s+branch(?:\s|$)/i.test(trimmed)) return GIT_BRANCH_LIST.test(trimmed);
+  if (GIT_EXTERNAL_PROGRAM.test(trimmed)) return false;
   if (OCTOCODE_READ_COMMAND.test(trimmed)) return true;
   if (RUST_VALIDATION_COMMAND.test(trimmed)) return true;
   if (CARGO_COMMAND.test(trimmed)) return !CARGO_RELEASE_OPERATION.test(trimmed) && !CARGO_SOURCE_MUTATION.test(trimmed);
@@ -149,7 +196,8 @@ function commandAllowedForReadOnly(command: string): boolean {
 
 function commandAllowedForImplementation(command: string): boolean {
   const trimmed = command.trim();
-  if (!trimmed || SHELL_CONTROL_SYNTAX.test(trimmed)) return false;
+  if (!trimmed) return false;
+  if (SHELL_CONTROL_SYNTAX.test(trimmed)) return commandAllowedForReadOnly(trimmed);
   if (CARGO_COMMAND.test(trimmed)) return !CARGO_RELEASE_OPERATION.test(trimmed);
   return commandAllowedForReadOnly(trimmed);
 }
@@ -166,7 +214,7 @@ function evaluateContextModeExecute(operation: string, input: Record<string, unk
     for (const entry of commands as unknown[]) {
       const { label, command } = entry && typeof entry === "object" && !Array.isArray(entry) ? entry as Record<string, unknown> : {};
       if (typeof label !== "string" || label.trim() === "" || typeof command !== "string" || !commandAllowedForReadOnly(command)) {
-        return { allowed: false, reason: `batch commands must be bounded read-only operations in the assigned workspace: ${String(command).slice(0, 80)}` };
+        return { allowed: false, reason: `batch commands must be bounded read-only operations in the assigned workspace (${READ_ONLY_SHELL_GUIDANCE}): ${String(command).slice(0, 80)}` };
       }
     }
     return { allowed: true, reason: "bounded read-only batch in assigned workspace" };
@@ -269,7 +317,7 @@ export function evaluateToolCall(
     const command = typeof input.command === "string" ? input.command : "";
     if (authority === "implementation-writer") {
       if (!commandAllowedForImplementation(command)) {
-        const reason = "implementation shell access is limited to approved validation and read-only commands";
+        const reason = `implementation shell access is limited to approved validation and read-only commands; ${READ_ONLY_SHELL_GUIDANCE}`;
         recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: command.slice(0, 160), action: "blocked", reason });
         return { allowed: false, reason, substantive };
       }
@@ -277,7 +325,7 @@ export function evaluateToolCall(
       return { allowed: true, reason: "implementation validation boundary", substantive };
     }
     if (!commandAllowedForReadOnly(command)) {
-      const reason = "unknown or mutating shell command is not permitted for this read-only role";
+      const reason = `shell command is not on this read-only role's allowlist or may mutate state; ${READ_ONLY_SHELL_GUIDANCE}`;
       recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: command.slice(0, 160), action: "blocked", reason });
       return { allowed: false, reason, substantive };
     }

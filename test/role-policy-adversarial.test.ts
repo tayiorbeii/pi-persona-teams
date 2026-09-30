@@ -295,3 +295,62 @@ test("structured writes cannot escape or hide protected paths behind symlinks", 
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
 });
+
+// Commands from staff-reviewer/release-engineer transcripts that were wrongly rejected.
+const revisionReadCommands = [
+  "git show 2b5fa37c7763529aca4efbd39a038ce347837c86:.github/workflows/terraform-qa.yml | nl -ba | sed -n '1,155p'",
+  "git show 2b5fa37c7763529aca4efbd39a038ce347837c86:.github/workflows/terraform-prod.yml | nl -ba | sed -n '285,430p'",
+  "git ls-tree -r --name-only 2b5fa37c7763529aca4efbd39a038ce347837c86 -- .github/workflows terraform infrastructure scripts",
+  "git diff --name-status 2b5fa37c7763529aca4efbd39a038ce347837c86 61c124077a28336b0025760d3e3e1ba18a1de44d",
+  "git cat-file -p HEAD:README.md | head -n 40",
+  "git blame -L 1,20 README.md",
+  "git grep -n persona_team -- extensions | wc -l",
+  "git log --oneline -20 | grep -i 'fix'",
+  "git merge-base HEAD HEAD~1",
+  "git branch -a --contains HEAD",
+  "git branch --show-current",
+];
+
+const pipelineBypassCommands = [
+  "git show HEAD:README.md | sh",
+  "git show HEAD:README.md | tee package.json",
+  "git show HEAD:README.md | sed -i 's/a/b/' package.json",
+  "git show HEAD:README.md | sed -n 'w package.json'",
+  "git show HEAD:README.md | sed -n '1p' package.json",
+  "git show HEAD:README.md | sort -o package.json",
+  "git show HEAD:README.md | xargs rm",
+  "git show HEAD:README.md || rm -rf .",
+  "git show HEAD:README.md | grep -f package.json 'x' | sh",
+  "git show HEAD:README.md | grep \"$(touch x)\"",
+  "git show 'HEAD:README.md | sh",
+  "git show HEAD:README.md |",
+  "rm -rf . | head",
+  "git diff --ext-diff HEAD~1",
+  "git show --textconv HEAD:README.md",
+  "git grep -Ovim persona",
+  "git grep --open-files-in-pager=sh persona",
+  "git branch evil",
+  "git branch -D main",
+  "git branch -m main other",
+  "git branch --set-upstream-to=origin/main",
+];
+
+test("read-only roles can inspect revisions with bounded read-only pipelines", () => {
+  for (const role of ["implementation-engineer", "staff-reviewer"] as const) {
+    const runtime = activatedRuntime(role);
+    for (const command of revisionReadCommands) {
+      expect(runtime.toolCall("bash", { command }).allowed, `${role} unexpectedly blocked: ${command}`).toBe(true);
+    }
+    for (const command of pipelineBypassCommands) {
+      expect(runtime.toolCall("bash", { command }).allowed, `${role} unexpectedly allowed: ${command}`).toBe(false);
+    }
+  }
+});
+
+test("a rejected read-only shell command explains the allowed revision-read forms", () => {
+  const runtime = activatedRuntime("staff-reviewer");
+  const decision = runtime.toolCall("bash", { command: "git show HEAD:README.md; git status" });
+  expect(decision.allowed).toBe(false);
+  expect(decision.reason).toContain("git show <rev>:<path>");
+  expect(decision.reason).toContain("pipes may only feed");
+});
