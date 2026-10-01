@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 import { attestationDirectory, createAttestation, writeAttestation, type PersonaAttestation } from "./internal/attestation.ts";
 import { readChildIdentity, personaFileFromIdentity, packageRootFromChildExtension, type ChildIdentity } from "./internal/child-identity.ts";
 import { completeLedger, createLedger, activateMethod, ledgerDeficiencies, recordDisposition, recordPolicyEvent, type PersonaEvidence, type PersonaLedger } from "./internal/ledger.ts";
@@ -48,6 +49,7 @@ export class PersonaChildRuntime {
   readonly ledger: PersonaLedger;
   readonly providerObserver: ProviderObserver;
   private latestAttestation?: PersonaAttestation;
+  private assignedOutputPath?: string;
   private latestAttestationPath?: string;
   private availableTools: string[];
   private visibilityReported = false;
@@ -119,6 +121,11 @@ export class PersonaChildRuntime {
     return { ok: false, message: `unsupported action: ${String(action.action)}` };
   }
 
+  /** Records the pi-subagents output path from the first prompt; later prompts cannot reassign it. */
+  assignOutputFromPrompt(prompt: string): void {
+    if (this.assignedOutputPath === undefined) this.assignedOutputPath = hostAssignedOutputPath(prompt);
+  }
+
   reprobeProviders(toolNames: string[], tools: ProviderToolDescriptor[] = []): void {
     this.providerObserver.reprobe({ toolNames, tools });
     this.providerObserver.sync(this.ledger);
@@ -156,7 +163,7 @@ export class PersonaChildRuntime {
     const policyToolName = observedProvider === "contextMode" && toolName.trim().toLowerCase() === "context-mode.search"
       ? "ctx_search"
       : toolName;
-    const decision = evaluateToolCall(this.ledger, { toolName: policyToolName, input }, this.workspace, { skipMethodGate: this.verificationPolicy === "advisory" });
+    const decision = evaluateToolCall(this.ledger, { toolName: policyToolName, input }, this.workspace, { skipMethodGate: this.verificationPolicy === "advisory", assignedOutputPath: this.assignedOutputPath, attestationDir: this.attestationDir });
     if (decision.allowed) {
       const provider = this.providerObserver.observeToolCall(toolName, fingerprint, correlationId);
       if (!provider && /^(?:read|read_file|grep|find|glob|bash|shell|git_)/i.test(toolName)) {
@@ -182,6 +189,22 @@ export class PersonaChildRuntime {
     const path = writeAttestation(attestation, this.attestationDir);
     return { attestation, path };
   }
+}
+
+// pi-subagents appends this exact two-line block when it assigns a write-capable
+// child an output file (runs/shared/single-output.ts). Only paths under a
+// subagent-artifacts/outputs directory qualify, so task text cannot use the
+// same wording to authorize an arbitrary file.
+const HOST_OUTPUT_INSTRUCTION = /^[ \t]*Write your findings to exactly this path:[ \t]*(.+?)[ \t]*\r?\n[ \t]*This path is authoritative for this run\.[ \t]*$/gm;
+
+export function hostAssignedOutputPath(prompt: string): string | undefined {
+  const match = [...prompt.matchAll(HOST_OUTPUT_INSTRUCTION)].at(-1);
+  if (!match) return undefined;
+  const raw = match[1].trim();
+  const candidate = raw.startsWith("`") && raw.endsWith("`") ? raw.slice(1, -1) : raw;
+  if (!isAbsolute(candidate)) return undefined;
+  const normalized = resolve(candidate);
+  return /\/subagent-artifacts\/outputs\/[^/]+\/[^/]+$/.test(normalized.replaceAll("\\", "/")) ? normalized : undefined;
 }
 
 function toolFingerprint(toolName: string, input: Record<string, unknown>): string {
@@ -275,6 +298,10 @@ export default function personaChildExtension(pi: any): void {
     } catch (error) {
       startupError = error instanceof Error ? error.message : String(error);
     }
+  });
+  pi.on("before_agent_start", async (event: { prompt?: string }) => {
+    if (runtime && typeof event.prompt === "string") runtime.assignOutputFromPrompt(event.prompt);
+    return undefined;
   });
   pi.on("tool_call", async (event: { toolName: string; input?: Record<string, unknown>; toolCallId?: string }) => {
     if (event.toolName === "persona_contract") return undefined;

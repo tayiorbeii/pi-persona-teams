@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PersonaChildRuntime } from "../extensions/persona-child.ts";
@@ -142,6 +142,8 @@ describe("host-observed provider routing", () => {
 
   test("implementation writer may read only a bounded editable source range without provider failure", () => {
     const workspace = mkdtempSync(join(tmpdir(), "persona-edit-read-"));
+    // Stand in for the persona package, where extensions/ is an enforcement path.
+    writeFileSync(join(workspace, "package.json"), JSON.stringify({ name: "pi-persona-teams" }));
     try {
       const writer = new PersonaChildRuntime({
         identity: { runtimeName: "persona-team.implementation-engineer", runId: "edit-read", childIndex: 0 },

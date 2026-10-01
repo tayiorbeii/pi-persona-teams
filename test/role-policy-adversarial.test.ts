@@ -240,6 +240,7 @@ test("a persona launched in a subdirectory can inspect and work in sibling direc
   const sibling = join(repo, "apps", "audit");
   const outside = join(temporaryRoot, "outside");
   mkdirSync(join(repo, ".git"), { recursive: true });
+  writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "pi-persona-teams" }));
   mkdirSync(workspace, { recursive: true });
   mkdirSync(sibling, { recursive: true });
   mkdirSync(outside);
@@ -283,6 +284,7 @@ test("structured writes cannot escape or hide protected paths behind symlinks", 
   const workspace = join(temporaryRoot, "workspace");
   const outside = join(temporaryRoot, "outside");
   mkdirSync(join(workspace, "agents"), { recursive: true });
+  writeFileSync(join(workspace, "package.json"), JSON.stringify({ name: "pi-persona-teams" }));
   mkdirSync(outside);
   symlinkSync(outside, join(workspace, "escape"), "dir");
   symlinkSync(join(workspace, "agents"), join(workspace, "apparently-safe"), "dir");
@@ -349,8 +351,55 @@ test("read-only roles can inspect revisions with bounded read-only pipelines", (
 
 test("a rejected read-only shell command explains the allowed revision-read forms", () => {
   const runtime = activatedRuntime("staff-reviewer");
-  const decision = runtime.toolCall("bash", { command: "git show HEAD:README.md; git status" });
+  const decision = runtime.toolCall("bash", { command: "git show HEAD:README.md > copy.md" });
   expect(decision.allowed).toBe(false);
   expect(decision.reason).toContain("git show <rev>:<path>");
   expect(decision.reason).toContain("pipes may only feed");
+});
+
+test("read-only command sequences are allowed only when every command is allowed", () => {
+  for (const role of ["implementation-engineer", "staff-reviewer"] as const) {
+    const runtime = activatedRuntime(role);
+    for (const command of [
+      "pwd; git status --short; git diff --stat",
+      "pwd; git branch --show-current; git rev-parse HEAD; git status --short; git diff --cached --name-only; printf '\\nDirectory anchors\\n'",
+      "git rev-parse HEAD && shasum -a 256 README.md package.json",
+      "find src -maxdepth 2 -type d | head -35",
+      "git status --short || git log --oneline -1",
+    ]) expect(runtime.toolCall("context-mode_ctx_execute", { language: "shell", code: command }).allowed, `${role} blocked: ${command}`).toBe(true);
+    for (const command of [
+      "pwd; rm -rf .",
+      "git status && git push",
+      "git status & rm -rf .",
+      "pwd; git status > out.txt",
+      "find . -name '*.ts' -exec rm {} +",
+      "find . -fprint out.txt",
+      "rg --pre sh pattern",
+      "rg --pre=./evil pattern",
+      "echo x; sh -c 'rm -rf .'",
+      Array.from({ length: 17 }, () => "pwd").join("; "),
+    ]) expect(runtime.toolCall("context-mode_ctx_execute", { language: "shell", code: command }).allowed, `${role} allowed: ${command}`).toBe(false);
+  }
+});
+
+test("a product repository's own manifests and persona report folder are editable; attestations stay protected", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "role-policy-product-"));
+  const repo = join(temporaryRoot, "product");
+  mkdirSync(join(repo, ".git"), { recursive: true });
+  writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "seer-agentic-readiness-audit" }));
+  try {
+    const runtime = new PersonaChildRuntime({
+      identity: { runtimeName: "persona-team.implementation-engineer", runId: `role-policy-product-${runSequence++}`, childIndex: 0 },
+      personaPath: join(root, "agents", "implementation-engineer.md"),
+      workspace: repo,
+      attestationDir: join(repo, ".pi-persona", "custom-attestations"),
+    });
+    for (const path of ["package.json", "tsconfig.json", "extensions/app.ts", "agents/notes.md", ".pi-persona/reports/slice-a.md"]) {
+      expect(runtime.toolCall("write", { path: join(repo, path), content: "x" }).allowed, path).toBe(true);
+    }
+    expect(runtime.toolCall("write", { path: join(repo, ".pi-persona", "attestations", "forged.json"), content: "{}" }).allowed).toBe(false);
+    expect(runtime.toolCall("write", { path: join(repo, ".pi-persona", "custom-attestations", "forged.json"), content: "{}" }).allowed).toBe(false);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });

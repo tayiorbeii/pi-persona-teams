@@ -16,10 +16,16 @@ export interface PolicyDecision {
   substantive?: boolean;
 }
 
-const READ_ONLY_COMMANDS = /^(?:pwd|ls(?:\s|$)|rg(?:\s|$)|grep(?:\s|$)|git\s+(?:status|log|show|diff|rev-parse|ls-files|ls-tree|cat-file|blame|grep|merge-base|rev-list|describe)(?:\s|$)|git\s+check-ignore(?:\s|$)|cat(?:\s|$)|head(?:\s|$)|tail(?:\s|$)|wc(?:\s|$)|bun\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|npm\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|node\s+--version(?:\s|$)|bun\s+--version(?:\s|$))/i;
+const READ_ONLY_COMMANDS = /^(?:pwd|ls(?:\s|$)|rg(?:\s|$)|grep(?:\s|$)|git\s+(?:status|log|show|diff|rev-parse|ls-files|ls-tree|cat-file|blame|grep|merge-base|rev-list|describe)(?:\s|$)|git\s+check-ignore(?:\s|$)|cat(?:\s|$)|head(?:\s|$)|printf(?:\s|$)|echo(?:\s|$)|shasum(?:\s|$)|sha256sum(?:\s|$)|stat(?:\s|$)|du(?:\s|$)|find(?:\s|$)|tail(?:\s|$)|wc(?:\s|$)|bun\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|npm\s+(?:test|run\s+(?:typecheck|verify:personas|verify:no-shared-corpus))(?:\s|$)|node\s+--version(?:\s|$)|bun\s+--version(?:\s|$))/i;
 const MUTATING_COMMAND = /(?:^|\s)(?:rm|mv|cp|mkdir|touch|install|add|commit|checkout|switch|reset|restore|push|pull|merge|rebase|deploy|publish|chmod|tee)(?:\s|$)|(?:^|\s)(?:--output(?:=|\s)|-o\s)/i;
 const SHELL_CONTROL_SYNTAX = /[\r\n;&|`<>^]|\$\(|\$\{/;
-const SHELL_CONTROL_EXCEPT_PIPE = /[\r\n;&`<>^]|\$\(|\$\{|\|\|/;
+// Redirects, substitution, and background jobs; `;`, newlines, `&&`, `||`, and `|` are handled structurally.
+const SHELL_UNSAFE_SYNTAX = /[\r`<>^]|\$\(|\$\{/;
+const MAX_SEQUENCE_COMMANDS = 16;
+// find actions that delete, execute, or write files.
+const FIND_UNSAFE_ACTION = /(?:^|\s)-(?:delete|exec|execdir|ok|okdir|fprint0?|fprintf|fls)(?:\s|$)/i;
+// ripgrep preprocessors run an arbitrary program per file.
+const RG_EXTERNAL_PROGRAM = /^rg\s(?:.*\s)?--pre(?:=|\s|$)/i;
 // Listing-only `git branch`; any other argument creates, renames, or deletes a branch.
 const GIT_BRANCH_LIST = /^git\s+branch(?:\s+(?:-a|-r|-v|-vv|--all|--remotes|--verbose|--show-current|--sort=\S+|--format=\S+|(?:--list|--contains|--no-contains|--merged|--no-merged|--points-at)(?:\s+[^-\s]\S*)?))*\s*$/i;
 // Git options that hand content to configured external programs or a pager.
@@ -34,7 +40,7 @@ const PIPE_FILTER = [
   /^uniq(?:\s+-c)?$/,
   /^grep(?:\s+-[invcwFE]+)*\s+(?:'[^']*'|"[^"$\\]*"|[^\s'"]+)$/,
 ];
-const READ_ONLY_SHELL_GUIDANCE = "run one read-only command per call (no ;, &&, ||, redirects, or substitution); pipes may only feed nl, sed -n 'A,Bp', head, tail, wc, sort, uniq, or grep. Revision reads such as `git show <rev>:<path>`, `git ls-tree -r <rev>`, `git diff <a> <b>`, and `git cat-file -p <rev>:<path>` are allowed";
+const READ_ONLY_SHELL_GUIDANCE = "every command in a ;/&&/|| sequence must itself be allowed (no redirects, substitution, or background jobs); pipes may only feed nl, sed -n 'A,Bp', head, tail, wc, sort, uniq, or grep. Revision reads such as `git show <rev>:<path>`, `git ls-tree -r <rev>`, `git diff <a> <b>`, and `git cat-file -p <rev>:<path>` are allowed";
 const SHELL_INTERPRETER = /(?:^|\s)(?:sh|bash|zsh|dash|fish|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh|python(?:\d+(?:\.\d+)*)?|py|node)(?:\s|$)/i;
 const CONTEXT_MODE_READ_OPERATION = "(?:search|index|fetch_and_index)";
 const JCODEMUNCH_READ_OPERATION = "(?:resolve_repo|plan_turn|search_symbols|search_text|get_symbol_source|get_file_outline|find_references|find_importers|get_blast_radius|get_changed_symbols|get_context_bundle|get_ranked_context|assemble_task_context|index_file|index_repo)";
@@ -132,9 +138,22 @@ function workspaceRelativePath(workspace: string, candidate: string): string {
   return rel === "" ? "." : rel;
 }
 
+function isPersonaPackageRoot(root: string): boolean {
+  try {
+    return (JSON.parse(nodeFs.readFileSync(join(root, "package.json"), "utf8")) as { name?: unknown }).name === "pi-persona-teams";
+  } catch {
+    return false;
+  }
+}
+
+// Attestations are protected in every repository; the persona and enforcement
+// sources (agents/, extensions/, package manifests) only exist to protect in
+// the pi-persona-teams package itself, not in product repositories.
 function isProtectedPath(workspace: string, candidate: string): boolean {
   const normalized = workspaceRelativePath(workspace, candidate);
-  return /^(?:\.pi-persona|agents|extensions)(?:\/|$)|^(?:package\.json|tsconfig\.json)$/.test(normalized);
+  if (/^\.pi-persona\/attestations(?:\/|$)/.test(normalized)) return true;
+  return isPersonaPackageRoot(repositoryRoot(workspace))
+    && /^(?:\.pi-persona|agents|extensions)(?:\/|$)|^(?:package\.json|tsconfig\.json)$/.test(normalized);
 }
 
 // Exact current text is needed before an edit. Keep this exception narrower than
@@ -147,9 +166,41 @@ export function isBoundedEditableSourceRead(workspace: string, input: Record<str
     && isInsideWorkspace(workspace, path) && !isProtectedPath(workspace, path);
 }
 
+function isHostAssignedOutput(workspace: string, candidate: string, assigned: string): boolean {
+  const candidatePath = canonicalPath(isAbsolute(candidate) ? resolve(candidate) : resolve(workspace, candidate));
+  const assignedPath = canonicalPath(assigned);
+  return Boolean(candidatePath && assignedPath && candidatePath === assignedPath);
+}
+
 function isPlanningArtifact(workspace: string, candidate: string): boolean {
   const normalized = workspaceRelativePath(workspace, candidate);
   return /^(?:plans|docs\/plans|docs\/testing|docs\/reviews)(?:\/|$)/.test(normalized);
+}
+
+/**
+ * Splits on unquoted `;`, newlines, `&&`, and `||`. Returns undefined for
+ * unbalanced quotes or a lone `&` (background job).
+ */
+function commandSequence(command: string): string[] | undefined {
+  const parts: string[] = [];
+  let quote: string | undefined;
+  let current = "";
+  for (let i = 0; i < command.length; i += 1) {
+    const char = command[i];
+    if (quote) {
+      if (char === quote) quote = undefined;
+      current += char;
+      continue;
+    }
+    if (char === "'" || char === '"') quote = char;
+    else if (char === ";" || char === "\n") { parts.push(current.trim()); current = ""; continue; }
+    else if ((char === "&" || char === "|") && command[i + 1] === char) { parts.push(current.trim()); current = ""; i += 1; continue; }
+    else if (char === "&") return undefined;
+    current += char;
+  }
+  if (quote) return undefined;
+  parts.push(current.trim());
+  return parts;
 }
 
 /** Splits on unquoted `|`; returns undefined when quotes are unbalanced. */
@@ -178,14 +229,18 @@ function commandAllowedForReadOnly(command: string): boolean {
   const trimmed = command.trim();
   if (!trimmed) return false;
   if (SHELL_CONTROL_SYNTAX.test(trimmed)) {
-    if (SHELL_CONTROL_EXCEPT_PIPE.test(trimmed)) return false;
+    if (SHELL_UNSAFE_SYNTAX.test(trimmed)) return false;
+    const parts = commandSequence(trimmed);
+    if (!parts || parts.some((part) => !part)) return false;
+    if (parts.length > 1) return parts.length <= MAX_SEQUENCE_COMMANDS && parts.every(commandAllowedForReadOnly);
     const stages = pipelineStages(trimmed);
     if (!stages || stages.length < 2 || stages.some((stage) => !stage)) return false;
     const [first, ...filters] = stages;
     return !first.includes("|") && commandAllowedForReadOnly(first) && filters.every((filter) => PIPE_FILTER.some((pattern) => pattern.test(filter)));
   }
   if (/^git\s+branch(?:\s|$)/i.test(trimmed)) return GIT_BRANCH_LIST.test(trimmed);
-  if (GIT_EXTERNAL_PROGRAM.test(trimmed)) return false;
+  if (GIT_EXTERNAL_PROGRAM.test(trimmed) || RG_EXTERNAL_PROGRAM.test(trimmed)) return false;
+  if (/^find(?:\s|$)/i.test(trimmed) && FIND_UNSAFE_ACTION.test(trimmed)) return false;
   if (OCTOCODE_READ_COMMAND.test(trimmed)) return true;
   if (RUST_VALIDATION_COMMAND.test(trimmed)) return true;
   if (CARGO_COMMAND.test(trimmed)) return !CARGO_RELEASE_OPERATION.test(trimmed) && !CARGO_SOURCE_MUTATION.test(trimmed);
@@ -197,7 +252,11 @@ function commandAllowedForReadOnly(command: string): boolean {
 function commandAllowedForImplementation(command: string): boolean {
   const trimmed = command.trim();
   if (!trimmed) return false;
-  if (SHELL_CONTROL_SYNTAX.test(trimmed)) return commandAllowedForReadOnly(trimmed);
+  if (SHELL_CONTROL_SYNTAX.test(trimmed)) {
+    const parts = SHELL_UNSAFE_SYNTAX.test(trimmed) ? undefined : commandSequence(trimmed);
+    if (parts && parts.length > 1) return parts.length <= MAX_SEQUENCE_COMMANDS && parts.every((part) => Boolean(part) && commandAllowedForImplementation(part));
+    return commandAllowedForReadOnly(trimmed);
+  }
   if (CARGO_COMMAND.test(trimmed)) return !CARGO_RELEASE_OPERATION.test(trimmed);
   return commandAllowedForReadOnly(trimmed);
 }
@@ -233,11 +292,11 @@ function evaluateContextModeExecute(operation: string, input: Record<string, unk
   if (SHELL_LANGUAGE.test(language)) {
     return commandAllowedForReadOnly(code)
       ? { allowed: true, reason: "context-mode shell code within the role's shell boundary" }
-      : { allowed: false, reason: "context-mode shell code is outside this role's shell boundary; use a single bounded read-only command" };
+      : { allowed: false, reason: `context-mode shell code is outside this role's shell boundary; ${READ_ONLY_SHELL_GUIDANCE}` };
   }
   if (!ANALYSIS_LANGUAGE.test(language)) return { allowed: false, reason: "context-mode execute is limited to javascript/typescript analysis or bounded shell commands" };
   const unsafe = code.match(UNSAFE_ANALYSIS_CODE)?.[0];
-  if (unsafe) return { allowed: false, reason: `context-mode analysis code may only transform provided data; disallowed capability: ${unsafe.slice(0, 40)}` };
+  if (unsafe) return { allowed: false, reason: `context-mode analysis code may only transform provided data; disallowed capability: ${unsafe.slice(0, 40)}. Read a file with ctx_execute_file (FILE_CONTENT) or list/inspect with bounded read-only shell commands instead` };
   return { allowed: true, reason: "context-mode pure analysis code" };
 }
 
@@ -251,7 +310,7 @@ export function evaluateToolCall(
   ledger: PersonaLedger,
   tool: ToolCall,
   workspace: string,
-  options: { skipMethodGate?: boolean } = {},
+  options: { skipMethodGate?: boolean; assignedOutputPath?: string; attestationDir?: string } = {},
 ): PolicyDecision {
   const substantive = isSubstantiveCall(tool);
   const missing = missingActivations(ledger);
@@ -289,8 +348,17 @@ export function evaluateToolCall(
   const authority = ledger.authority;
   const candidatePaths = pathsFromInput(input);
   if (WRITE_TOOL.test(tool.toolName)) {
+    if (options.attestationDir && candidatePaths?.some((candidate) => isInsideWorkspace(options.attestationDir!, isAbsolute(candidate) ? candidate : resolve(workspace, candidate)))) {
+      const reason = "persona attestations are written only by the persona runtime";
+      recordPolicyEvent(ledger, { toolName: tool.toolName, action: "blocked", reason });
+      return { allowed: false, reason, substantive };
+    }
+    if (options.assignedOutputPath && candidatePaths?.length === 1 && isHostAssignedOutput(workspace, candidatePaths[0], options.assignedOutputPath)) {
+      recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: candidatePaths[0].slice(0, 160), action: "allowed", reason: "host-assigned subagent output path" });
+      return { allowed: true, reason: "host-assigned subagent output path", substantive };
+    }
     if (!candidatePaths || candidatePaths.some((candidate) => !isInsideRepository(workspace, candidate))) {
-      const reason = "every write path must be explicit and inside the assigned repository; an external report/output path must be reassigned to an in-repository path";
+      const reason = "every write path must be explicit and inside the assigned repository (or be this run's host-assigned subagent output path); an external report/output path must be reassigned to an in-repository path";
       recordPolicyEvent(ledger, { toolName: tool.toolName, action: "blocked", reason });
       return { allowed: false, reason, substantive };
     }
