@@ -366,12 +366,15 @@ test("read-only command sequences are allowed only when every command is allowed
       "git rev-parse HEAD && shasum -a 256 README.md package.json",
       "find src -maxdepth 2 -type d | head -35",
       "git status --short || git log --oneline -1",
+      "pwd; git rev-parse HEAD; git diff --stat;",
     ]) expect(runtime.toolCall("context-mode_ctx_execute", { language: "shell", code: command }).allowed, `${role} blocked: ${command}`).toBe(true);
     for (const command of [
       "pwd; rm -rf .",
       "git status && git push",
       "git status & rm -rf .",
       "pwd; git status > out.txt",
+      "pwd;; git status",
+      ";",
       "find . -name '*.ts' -exec rm {} +",
       "find . -fprint out.txt",
       "rg --pre sh pattern",

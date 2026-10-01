@@ -199,7 +199,8 @@ function commandSequence(command: string): string[] | undefined {
     current += char;
   }
   if (quote) return undefined;
-  parts.push(current.trim());
+  // A single trailing `;` or newline is harmless; empty commands elsewhere (`;;`) are rejected by callers.
+  if (current.trim() || parts.length === 0) parts.push(current.trim());
   return parts;
 }
 
