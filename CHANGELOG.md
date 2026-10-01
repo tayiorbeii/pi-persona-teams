@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Pi Context Capsules replaces context-mode
+
+- Pi Context Capsules is the persona context provider (`ProviderName` `capsules`): detection from `capsule_recall`/`capsule_analyze`, trusted `capsules` provenance, or `PI_CAPSULES_AVAILABLE=1`; ledger, attestation, and doctor reporting; a degraded doctor message when Capsules is absent; and a `context-owner-conflict` report when context-mode tools are registered beside it.
+- Role policy allows `capsule_recall` and `capsule_analyze` for every role; they only read already-captured evidence. No deny path changed, and the context-mode input gates remain as a legacy boundary.
+- Persona allowlists list the Capsules tools instead of context-mode tools, and persona contracts declare `providers.capsules`. context-mode is no longer an observed provider.
+- Back-compat: contracts with only the legacy `providers.contextMode` still validate (with a warning), and persisted ledgers and attestations with a `contextMode` key and no `capsules` key still load and verify. The unused context-mode transport adapter was removed.
+
 ### Single pi-subagents runtime and gated context-mode execution
 
 - Moved the pi-subagents peer range to `>=0.60.0 <0.61.0` so the package resolves the same pi-subagents that pi loads globally, replacing the 0.47.1 patch with the matching 0.60.0 project-root env reset patch. Pinned the pi runtime packages (`0.84.4`) as dev dependencies so the 0.60.0 preflight's `pi-tui` import resolves in tests.

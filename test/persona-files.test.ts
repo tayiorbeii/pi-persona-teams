@@ -21,6 +21,21 @@ const expectedMethods: Record<string, string[]> = {
 };
 
 describe("independent persona files", () => {
+  test("canonical contracts declare the Capsules provider policy and no context-mode policy", () => {
+    for (const role of Object.keys(expectedMethods)) {
+      const result = validatePersonaFile(join(root, "agents", `${role}.md`));
+      expect(result.valid, `${role}: ${result.errors.join("; ")}`).toBe(true);
+      expect(result.persona?.contract.providers.capsules, role).toBe("required_if_available_and_relevant");
+      expect(result.persona?.contract.providers, role).not.toHaveProperty("contextMode");
+      expect(result.warnings, role).toEqual([]);
+      const source = result.persona!.source;
+      expect(source, role).toContain("capsule_recall");
+      expect(source, role).toContain("capsule_analyze");
+      expect(source, role).not.toMatch(/ctx_(?:execute|search|batch_execute|index|fetch_and_index)/);
+      expect(source, role).not.toMatch(/through context-mode|Use context-mode/);
+    }
+  });
+
   test("all ten canonical files validate with literal method sets", () => {
     const summaries = listPersonas(root);
     expect(summaries).toHaveLength(10);
@@ -32,7 +47,7 @@ describe("independent persona files", () => {
     }
   });
 
-  test("every persona declares an explicit tool allowlist with persona_contract and MCP direct tools, and inherits extensions, skills, and project settings", () => {
+  test("every persona declares an explicit tool allowlist with persona_contract, Capsules, and MCP direct tools, and inherits extensions, skills, and project settings", () => {
     for (const role of Object.keys(expectedMethods)) {
       const source = readFileSync(join(root, "agents", `${role}.md`), "utf8");
       // pi-subagents only grants subagents direct MCP tools when `mcp:` entries are
@@ -40,7 +55,11 @@ describe("independent persona files", () => {
       // persona-child extension's persona_contract tool. (See pi-subagents README
       // "Tool and extension selection".)
       expect(source, role).toMatch(/^tools: .*persona_contract/m);
-      expect(source, role).toMatch(/^tools: .*mcp:context-mode\/ctx_execute/m);
+      // Capsules tools are extension tools, listed by plain name like persona_contract.
+      // context-mode must not be requested: Capsules refuses to run beside any context-mode tool.
+      const tools = source.match(/^tools: (.*)$/m)?.[1].split(",").map((tool) => tool.trim()) ?? [];
+      expect(tools, role).toEqual(expect.arrayContaining(["capsule_recall", "capsule_analyze"]));
+      expect(tools.filter((tool) => /context[-_]?mode|^(?:mcp:[^/]+\/)?ctx_/i.test(tool)), role).toEqual([]);
       expect(source, role).toMatch(/^tools: .*mcp:jcodemunch\/search_symbols/m);
       expect(source, role).toMatch(/^tools: .*mcp:jdocmunch\/search_sections/m);
       expect(source, role).not.toMatch(/^extensions:/m);

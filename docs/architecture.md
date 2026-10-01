@@ -22,7 +22,7 @@ Persona compliance and ordinary work acceptance are separate. `persona_team` def
 
 ## Workspace containment and external output routing
 
-`role-policy.ts` resolves the nearest Git repository root above the launch workspace. Context-mode execute paths and explicitly assigned write paths may reach sibling directories inside that repository; realpath checks reject symlink escapes and paths outside it. Other retrieval providers retain their own access rules. When there is no Git root, the launch workspace remains the boundary. Reviewers still cannot edit candidate files, and protected persona/enforcement paths remain protected. This is a role-policy guardrail, not an operating-system sandbox.
+`role-policy.ts` resolves the nearest Git repository root above the launch workspace. Explicitly assigned write paths (and legacy context-mode execute paths) may reach sibling directories inside that repository; realpath checks reject symlink escapes and paths outside it. Other retrieval providers retain their own access rules. When there is no Git root, the launch workspace remains the boundary. Reviewers still cannot edit candidate files, and protected persona/enforcement paths remain protected. This is a role-policy guardrail, not an operating-system sandbox.
 
 A host-side tool that independently routes output to a global/shared report directory outside the repository conflicts with this boundary. The write is blocked with `"every write path must be explicit and inside the assigned repository"`.
 

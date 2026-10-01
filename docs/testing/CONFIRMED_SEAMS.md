@@ -7,7 +7,7 @@ The implementation request to deliver the planned vertical slices is recorded as
 - **C — child contract:** launched children expose `persona_contract` status, activation, disposition, and completion.
 - **D — child tool policy:** actual tool calls are gated before activation and by role authority; provider fallback is bounded.
 - **E — attestation:** host-authored `pi.persona-attestation/v1` binds identity, contract, methods, providers, and policy events.
-- **F — providers:** context-mode and jCodeMunch are optional; availability, use/non-use, failure, and bounded fallback are observable.
+- **F — providers:** Pi Context Capsules and jCodeMunch are optional (context-mode is disabled and reported only as a Capsules conflict); availability, use/non-use, failure, and bounded fallback are observable.
 - **G — independent files:** `verify:personas` validates each canonical file independently, including exact copied method bodies and hashes.
 - **H — Engineering Manager tracer:** a user-level run activates four methods, inspects evidence, cannot edit source, writes a plan artifact, and passes dual acceptance.
 

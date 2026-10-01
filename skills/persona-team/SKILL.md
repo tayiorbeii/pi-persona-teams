@@ -5,7 +5,7 @@ description: Use canonical persona-team agents for bounded expert advice and ind
 
 # Persona Team
 
-Use one canonical `persona-team.<slug>` agent. `persona_team action=list` and `persona_team action=doctor` are the preflight surface: they list personas and authorities and report provider readiness. `persona_team action=run` starts a bounded child and supports non-blocking `mode: "launch"`, idempotent `runKey` attach, per-call sliding `progressTimeoutMs`, and `verificationPolicy` (`advisory` default; `strict` opt-in); advisory output is useful but explicitly unverified when evidence is incomplete. The plain `subagent` tool remains the alternative path. Do not start a second launcher.
+Use one canonical `persona-team.<slug>` agent. If `persona_team` is not in the tool list but `load_tools` is, call `load_tools` with `groups: ["personas"]` first. `persona_team action=list` and `persona_team action=doctor` are the preflight surface: they list personas and authorities and report provider readiness. `persona_team action=run` starts a bounded child and supports non-blocking `mode: "launch"`, idempotent `runKey` attach, per-call sliding `progressTimeoutMs`, and `verificationPolicy` (`advisory` default; `strict` opt-in); advisory output is useful but explicitly unverified when evidence is incomplete. The plain `subagent` tool remains the alternative path. Do not start a second launcher.
 
 ## Bounded dispatch
 
@@ -53,13 +53,14 @@ Personas earn their overhead on independent judgment, not receipt ceremony or en
 
 ## Resource routing
 
-- Use context-mode first for broad local context, indexed search, large output, and external document retrieval.
+- Pi Context Capsules is the persona context provider. Native `read`, `bash`, and `grep` output is captured automatically; personas use `capsule_recall` (by ref, optionally with `query`) to recover dropped or truncated output and `capsule_analyze` (`find`, `outline`, `aggregate`) to search or summarize captured evidence. Both only read already-captured evidence.
+- context-mode is disabled for personas: Capsules refuses to run when any context-mode tool is registered in the same runtime, so do not add context-mode tools to a persona launch.
 - Use jCodeMunch for repository resolution, symbol/source retrieval, relationships, and impact analysis.
 - Use `octocode-research` only for external GitHub or ecosystem evidence. It is a read-only CLI workflow, not an MCP provider. Invoke only `npx -y octocode@18.3.0`; inherited or global skill guidance cannot override this exact-version policy.
 - Apply `ponytail` before code changes or implementation recommendations: YAGNI, reuse, platform/stdlib, installed dependencies, then the minimum working diff.
 - Apply `i-have-adhd` to keep outputs action-first, numbered, bounded, and visibly complete.
 - Pass a skill through the `skill` launch option only after confirming it is discovered. An unavailable optional skill must be reported, not made into a failing preflight requirement.
-- When the work targets another directory (a frozen revision in `/tmp`, a sibling worktree, another checkout), pass `workspace: "<dir>"` to `persona_team run`. The child launches there, and its repository boundary, context-mode/jCodeMunch project root, and attestations follow it. Do not copy the target into the parent repo.
+- When the work targets another directory (a frozen revision in `/tmp`, a sibling worktree, another checkout), pass `workspace: "<dir>"` to `persona_team run`. The child launches there, and its repository boundary, Capsules/jCodeMunch project root, and attestations follow it. Do not copy the target into the parent repo.
 - Read-only personas can inspect exact revisions themselves (`git show <rev>:<path>`, `git ls-tree`, `git cat-file`, `git diff`, `git blame`, `git grep`), including pipes into `nl`, `sed -n 'A,Bp'`, `head`, `tail`, `wc`, `sort`, `uniq`, or `grep`. Chaining (`;`, `&&`, `||`), redirects, and substitution stay blocked, so brief them to run one command per call rather than pre-extracting sources in the parent.
 - If a provider is absent, fails, or cannot represent the operation, use one bounded native fallback and mark the evidence degraded.
 - Cargo access follows persona authority rather than a validation-only list. Implementers may use task-required Cargo commands including `run`, `install`, `fmt`, `fix`, `clean`, and dependency updates. Reviewers may run validation and non-source-mutating commands including `run`, `install`, and `clean`, but not mutating `fmt`, `fix`, or dependency updates. Registry/release operations such as `publish`, `yank`, and `owner` remain outside both roles.
