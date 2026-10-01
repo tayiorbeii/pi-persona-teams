@@ -51,9 +51,11 @@ export interface PersonaLedger {
   authority: string;
   methods: Record<string, MethodLedgerEntry>;
   providers: {
-    contextMode: ProviderLedger;
+    capsules: ProviderLedger;
     jcodemunch: ProviderLedger;
     native: ProviderLedger;
+    /** Legacy: present only in ledgers persisted before Capsules replaced context-mode. */
+    contextMode?: ProviderLedger;
   };
   policyEvents: PolicyEvent[];
   repairTurns: number;
@@ -196,7 +198,7 @@ function freshLedger(persona: PersonaFile, identity: PersonaIdentity): PersonaLe
     launchContractDigest: identity.launchContractDigest ?? process.env.PI_SUBAGENT_LAUNCH_CONTRACT_DIGEST,
     authority: persona.contract.authority,
     methods,
-    providers: { contextMode: providerDefault(), jcodemunch: providerDefault(), native: providerDefault() },
+    providers: { capsules: providerDefault(), jcodemunch: providerDefault(), native: providerDefault() },
     policyEvents: [],
     repairTurns: 0,
     maxRepairTurns: persona.contract.completion.maxRepairTurns,
@@ -269,7 +271,7 @@ export function recordDisposition(
 
 export function setProvider(
   ledger: PersonaLedger,
-  provider: "contextMode" | "jcodemunch" | "native",
+  provider: "capsules" | "jcodemunch" | "native",
   update: Partial<ProviderLedger> & { reason?: string },
 ): void {
   ledger.providers[provider] = { ...ledger.providers[provider], ...update };
@@ -288,7 +290,8 @@ export function ledgerDeficiencies(ledger: PersonaLedger, outputSummary?: string
   if (activations.length) deficiencies.push(`activate required methods: ${activations.join(", ")}`);
   if (dispositions.length) deficiencies.push(`record dispositions: ${dispositions.join(", ")}`);
   for (const [name, provider] of Object.entries(ledger.providers)) {
-    if (name === "native") continue;
+    // native is a fallback, and legacy contextMode can no longer be observed or accounted for.
+    if (name === "native" || name === "contextMode") continue;
     if (provider.availability === "available" && (provider.status === "pending" || (provider.status === "not_applicable" && !provider.reason?.trim()))) {
       deficiencies.push(`${name} availability is unaccounted for; record use or a specific non-use reason`);
     }
@@ -449,7 +452,11 @@ export function restoreLedgerSnapshot(snapshot: string | unknown, persona: Perso
   const providersState = persistedRecord(state.providers);
   if (!providersState) throw new Error("invalid persisted ledger providers");
   const providers = {} as PersonaLedger["providers"];
-  for (const name of ["contextMode", "jcodemunch", "native"] as const) {
+  for (const name of ["capsules", "jcodemunch", "native", "contextMode"] as const) {
+    // Ledgers persisted before Capsules have no capsules entry, and newer ledgers have no
+    // contextMode entry; both are optional on load. jcodemunch and native stay required.
+    if (providersState[name] === undefined && name === "capsules") { providers.capsules = providerDefault(); continue; }
+    if (providersState[name] === undefined && name === "contextMode") continue;
     const provider = persistedRecord(providersState[name]);
     if (!provider || typeof provider.availability !== "string" || !PROVIDER_AVAILABILITIES.has(provider.availability as ProviderAvailability) || typeof provider.status !== "string" || !PROVIDER_STATUSES.has(provider.status as ProviderStatus)) {
       throw new Error(`invalid persisted provider state: ${name}`);

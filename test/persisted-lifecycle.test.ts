@@ -24,7 +24,7 @@ test("child contract status, ledger completion, and persisted attestation stay c
       personaPath,
       workspace,
       attestationDir,
-      toolNames: ["ctx_search"],
+      toolNames: ["capsule_recall"],
       verificationPolicy: "strict",
     });
     expect(child.toolCall("read", { path: "README.md" })).toMatchObject({ allowed: false, reason: expect.stringContaining("persona_contract.status") });
@@ -37,8 +37,8 @@ test("child contract status, ledger completion, and persisted attestation stay c
     }
     const activated = child.handle({ action: "status" });
     expect(activated.status?.requiredMethods.every((method) => method.activated)).toBe(true);
-    expect(activated.status?.toolVisibility.available).toEqual(["ctx_search"]);
-    expect(child.toolCall("context-mode.search", { query: "bounded context" }).allowed).toBe(true);
+    expect(activated.status?.toolVisibility.available).toEqual(["capsule_recall"]);
+    expect(child.toolCall("capsule_recall", { ref: "nev1_bounded", query: "bounded context" }).allowed).toBe(true);
     expect(child.toolCall("structured_output", { summary: "Bounded structured finalization." })).toMatchObject({ allowed: true, substantive: true });
     expect(activated.status?.completionStatus).toBe("open");
 
@@ -68,7 +68,8 @@ test("child contract status, ledger completion, and persisted attestation stay c
       methodHashes: Object.fromEntries((validatePersonaFile(personaPath).persona?.methods ?? []).map((method) => [method.id, method.bodySha256])),
     }).valid).toBe(true);
     expect(child.attestation()).toEqual(persisted);
-    expect(persisted.providers.contextMode).toMatchObject({ availability: "available", status: "used", uses: 1 });
+    expect(persisted.providers.capsules).toMatchObject({ availability: "available", status: "used", uses: 1 });
+    expect(persisted.providers).not.toHaveProperty("contextMode");
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

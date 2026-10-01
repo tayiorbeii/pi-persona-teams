@@ -5,7 +5,7 @@ import { ledgerPersistencePath } from "../extensions/internal/ledger.ts";
 
 interface RegisteredTool {
   name: string;
-  execute: (toolCallId: string, params: unknown) => Promise<{ details?: { ok?: boolean; message?: string; status?: { toolVisibility?: { available: string[] }; providers?: { contextMode?: { availability: string }; jcodemunch?: { availability: string } } } } }> | { details?: { ok?: boolean; message?: string; status?: { toolVisibility?: { available: string[] }; providers?: { contextMode?: { availability: string }; jcodemunch?: { availability: string } } } } };
+  execute: (toolCallId: string, params: unknown) => Promise<{ details?: { ok?: boolean; message?: string; status?: { toolVisibility?: { available: string[] }; providers?: { capsules?: { availability: string }; jcodemunch?: { availability: string } } } } }> | { details?: { ok?: boolean; message?: string; status?: { toolVisibility?: { available: string[] }; providers?: { capsules?: { availability: string }; jcodemunch?: { availability: string } } } } };
 }
 
 interface FakePi {
@@ -35,7 +35,7 @@ function buildFakePi(): {
       // Match pi-mcp-adapter direct tools: registry names are present, but
       // registerTool descriptors do not carry source/provenance metadata.
       return [
-        { name: "context_mode_ctx_search", description: "search" },
+        { name: "capsule_recall", description: "Recall evidence" },
         { name: "jcodemunch_search_symbols", description: "search" },
         { name: "fffind", description: "fuzzy path search" },
         { name: "ffgrep", description: "indexed content search" },
@@ -83,13 +83,13 @@ test("child extension defers tool discovery until session_start instead of calli
     const result = await contract.execute("call-1", { action: "status" });
     expect(result.details?.ok, result.details?.message).toBe(true);
     expect(result.details?.status?.toolVisibility?.available).toEqual(expect.arrayContaining([
-      "context_mode_ctx_search",
+      "capsule_recall",
       "jcodemunch_search_symbols",
       "fffind",
       "ffgrep",
     ]));
     expect(result.details?.status?.toolVisibility?.available).toHaveLength(4);
-    expect(result.details?.status?.providers?.contextMode?.availability).toBe("available");
+    expect(result.details?.status?.providers?.capsules?.availability).toBe("available");
     expect(result.details?.status?.providers?.jcodemunch?.availability).toBe("available");
   } finally {
     rmSync(ledgerPersistencePath(identity), { force: true });

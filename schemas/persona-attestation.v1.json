@@ -47,9 +47,11 @@
     "providers": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["contextMode", "jcodemunch", "native"],
+      "required": ["jcodemunch", "native"],
+      "anyOf": [{ "required": ["capsules"] }, { "required": ["contextMode"] }],
       "properties": {
-        "contextMode": { "$ref": "#/$defs/provider" },
+        "capsules": { "$ref": "#/$defs/provider" },
+        "contextMode": { "$ref": "#/$defs/provider", "deprecated": true, "description": "Legacy context provider state in attestations written before Capsules." },
         "jcodemunch": { "$ref": "#/$defs/provider" },
         "native": { "$ref": "#/$defs/provider" }
       }

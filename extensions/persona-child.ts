@@ -27,7 +27,7 @@ export interface PersonaChildAction {
   evidence?: PersonaEvidence[];
   justification?: string;
   outputSummary?: string;
-  provider?: "contextMode" | "jcodemunch" | "native";
+  provider?: "capsules" | "jcodemunch" | "native";
   availability?: "available" | "unavailable" | "failed";
   status?: "used" | "not_applicable" | "degraded" | "unavailable" | "pending";
   reason?: string;
@@ -159,11 +159,7 @@ export class PersonaChildRuntime {
         return { allowed: false, reason, substantive: true };
       }
     }
-    const observedProvider = this.providerObserver.providerForTool(toolName);
-    const policyToolName = observedProvider === "contextMode" && toolName.trim().toLowerCase() === "context-mode.search"
-      ? "ctx_search"
-      : toolName;
-    const decision = evaluateToolCall(this.ledger, { toolName: policyToolName, input }, this.workspace, { skipMethodGate: this.verificationPolicy === "advisory", assignedOutputPath: this.assignedOutputPath, attestationDir: this.attestationDir });
+    const decision = evaluateToolCall(this.ledger, { toolName, input }, this.workspace, { skipMethodGate: this.verificationPolicy === "advisory", assignedOutputPath: this.assignedOutputPath, attestationDir: this.attestationDir });
     if (decision.allowed) {
       const provider = this.providerObserver.observeToolCall(toolName, fingerprint, correlationId);
       if (!provider && /^(?:read|read_file|grep|find|glob|bash|shell|git_)/i.test(toolName)) {
@@ -238,7 +234,7 @@ function toolParameters(): Record<string, unknown> {
       evidence: { type: "array", items: { type: "object" } },
       justification: { type: "string" },
       outputSummary: { type: "string" },
-      provider: { type: "string", enum: ["contextMode", "jcodemunch", "native"] },
+      provider: { type: "string", enum: ["capsules", "jcodemunch", "native"] },
       availability: { type: "string" },
       status: { type: "string" },
       reason: { type: "string" },
@@ -265,8 +261,8 @@ export default function personaChildExtension(pi: any): void {
     parameters: toolParameters(),
     async execute(_toolCallId: string, params: PersonaChildAction) {
       if (startupError || !runtime) return { content: [{ type: "text", text: `Persona admission failed: ${startupError ?? "unknown startup error"}` }], details: { ok: false, message: startupError ?? "unknown startup error" } };
-      // Re-probe the runtime tool registry on demand. MCP direct tools (context-mode,
-      // jcodemunch, jdocmunch) are registered asynchronously after session_start, so the
+      // Re-probe the runtime tool registry on demand. MCP direct tools (jcodemunch,
+      // jdocmunch) are registered asynchronously after session_start, so the
       // initial provider observations can be stale — providers were reported unavailable
       // even though the tools were present in the child. Refreshing here keeps the
       // visibility gate and provider routing truthful without depending on registration

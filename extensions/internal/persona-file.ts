@@ -33,7 +33,10 @@ export interface PersonaContract {
     maxRepairTurns: number;
   };
   providers: {
-    contextMode: ProviderRequirement;
+    /** Pi Context Capsules: the persona context provider. */
+    capsules?: ProviderRequirement;
+    /** Legacy: contracts written before Capsules replaced context-mode. Accepted, never required. */
+    contextMode?: ProviderRequirement;
     jcodemunch: ProviderRequirement;
     nativeFallback: "allowed_with_degraded_evidence";
   };
@@ -151,7 +154,10 @@ function parseContract(source: string, errors: string[]): PersonaContract | unde
     errors.push("completion allowedDispositions must be applied and not_applicable");
   }
   if (!Number.isInteger(contract.completion?.maxRepairTurns) || contract.completion.maxRepairTurns < 0) errors.push("completion maxRepairTurns must be a non-negative integer");
-  if (contract.providers?.contextMode !== "required_if_available_and_relevant") errors.push("context-mode provider policy is unsupported");
+  const { capsules, contextMode } = contract.providers ?? {};
+  if (capsules === undefined && contextMode === undefined) errors.push("Capsules provider policy is missing");
+  if (capsules !== undefined && capsules !== "required_if_available_and_relevant") errors.push("Capsules provider policy is unsupported");
+  if (contextMode !== undefined && contextMode !== "required_if_available_and_relevant") errors.push("context-mode provider policy is unsupported");
   if (contract.providers?.jcodemunch !== "required_if_available_and_relevant") errors.push("jCodeMunch provider policy is unsupported");
   if (contract.providers?.nativeFallback !== "allowed_with_degraded_evidence") errors.push("native fallback policy is unsupported");
   return contract;
@@ -217,6 +223,7 @@ export function parsePersonaFile(source: string, filePath = "<memory>"): Persona
     for (const id of required) if (!embedded.has(id)) errors.push(`missing embedded method: ${id}`);
     for (const id of embedded) if (!required.has(id)) errors.push(`undeclared embedded method: ${id}`);
     if (required.size !== embedded.size) warnings.push("required and embedded method sets differ");
+    if (contract.providers?.capsules === undefined && contract.providers?.contextMode !== undefined) warnings.push("contract declares only the legacy contextMode provider policy; declare providers.capsules");
     if (/skillPath\s*:|shared[- ]method|shared[- ]corpus|load\s+(?:this\s+)?(?:method|skill)\s+from|see\s+.*(?:methods|skills)\//i.test(source)) {
       errors.push("persona contains a required external/shared method reference");
     }

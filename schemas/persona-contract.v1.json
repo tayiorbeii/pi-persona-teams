@@ -11,6 +11,16 @@
     "requiredMethods": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^persona-team-" } },
     "activation": { "type": "object", "required": ["requiredBeforeSubstantiveTools", "requirePlannedApplication"] },
     "completion": { "type": "object", "required": ["requireDisposition", "allowedDispositions", "maxRepairTurns"] },
-    "providers": { "type": "object", "required": ["contextMode", "jcodemunch", "nativeFallback"] }
+    "providers": {
+      "type": "object",
+      "required": ["jcodemunch", "nativeFallback"],
+      "anyOf": [{ "required": ["capsules"] }, { "required": ["contextMode"] }],
+      "properties": {
+        "capsules": { "const": "required_if_available_and_relevant" },
+        "contextMode": { "const": "required_if_available_and_relevant", "deprecated": true, "description": "Legacy context provider policy; superseded by capsules." },
+        "jcodemunch": { "const": "required_if_available_and_relevant" },
+        "nativeFallback": { "const": "allowed_with_degraded_evidence" }
+      }
+    }
   }
 }

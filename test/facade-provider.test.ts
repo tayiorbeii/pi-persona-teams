@@ -25,7 +25,10 @@ test("facade list and doctor work with neither optional provider", async () => {
   expect(listPersonas(root)).toHaveLength(10);
   const doctor = await personaDoctor({ packageRoot: root, workspace: root, discover: () => canonicalDiscoveries, toolNames: [], environment: {} });
   expect(doctor.baselineReady).toBe(true);
-  expect(doctor.providers.contextMode.availability).toBe("unavailable");
+  expect(doctor.providers.capsules.availability).toBe("unavailable");
+  expect(doctor.providers).not.toHaveProperty("contextMode");
+  expect(doctor.degraded).toEqual(expect.arrayContaining([expect.stringContaining("Capsules unavailable")]));
+  expect(doctor.degraded.some((item) => /context-mode/i.test(item))).toBe(false);
   expect(doctor.providers.jcodemunch.availability).toBe("unavailable");
 });
 
@@ -58,7 +61,7 @@ test("facade accepts only dual persona and ordinary acceptance", async () => {
 describe("provider routing", () => {
   test("absence is usable and a failed provider grants one native fallback", () => {
     const baseline = new ProviderObserver({ toolNames: [] });
-    expect(baseline.availability("contextMode")).toBe("unavailable");
+    expect(baseline.availability("capsules")).toBe("unavailable");
     const available = new ProviderObserver({ toolNames: ["jcodemunch_search_symbols"] });
     expect(available.availability("jcodemunch")).toBe("available");
     expect(available.shouldRedirect("jcodemunch", "code-orientation")).toBe(true);

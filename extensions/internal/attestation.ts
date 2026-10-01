@@ -192,7 +192,11 @@ function validateAttestationShape(attestation: unknown): string[] {
   }
   const providers = record(value.providers);
   if (!providers) errors.push("provider obligations are missing");
-  else for (const name of ["contextMode", "jcodemunch", "native"]) {
+  // Attestations name capsules as the context provider; ones written before Capsules
+  // replaced context-mode name contextMode instead. jcodemunch and native are always required.
+  else for (const name of ["capsules", "contextMode", "jcodemunch", "native"]) {
+    if (name === "capsules" && providers.capsules === undefined && providers.contextMode !== undefined) continue;
+    if (name === "contextMode" && providers.contextMode === undefined) continue;
     const provider = record(providers[name]);
     if (!provider || !PROVIDER_AVAILABILITIES.has(provider.availability as string) || !PROVIDER_STATUSES.has(provider.status as string) || !Number.isInteger(provider.uses) || (provider.uses as number) < 0 || !Number.isInteger(provider.failures) || (provider.failures as number) < 0 || !Number.isInteger(provider.fallbackUses) || (provider.fallbackUses as number) < 0) errors.push(`invalid provider state: ${name}`);
     else if (provider.reason !== undefined && !nonEmptyString(provider.reason)) errors.push(`invalid provider reason: ${name}`);
@@ -247,7 +251,7 @@ export function verifyAttestation(attestation: unknown, expected: AttestationExp
     }
     if (expected.methodHashes !== undefined && methods.length !== expectedMethods.size) errors.push("method attestation set is incomplete or contains extras");
   }
-  if (!value.providers || typeof value.providers !== "object" || !value.providers.contextMode || !value.providers.jcodemunch) errors.push("provider obligations are missing");
+  if (!value.providers || typeof value.providers !== "object" || (!value.providers.capsules && !value.providers.contextMode) || !value.providers.jcodemunch) errors.push("provider obligations are missing");
   if (!value.policy || typeof value.policy !== "object" || value.policy.unresolvedViolations !== 0) errors.push("unresolved policy violations");
   else if (!Number.isInteger(value.policy.blockedCalls) || (value.policy.blockedCalls as number) < 0 || !Number.isInteger(value.policy.repairTurns) || (value.policy.repairTurns as number) < 0) errors.push("policy counters are invalid");
   return { valid: errors.length === 0, errors };

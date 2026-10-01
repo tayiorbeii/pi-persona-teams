@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { resolvePersonaPath, validatePersonaFile, type PersonaFile } from "./persona-file.ts";
 import { verifyAttestation, readAttestation, type PersonaAttestation } from "./attestation.ts";
-import { providerDoctor, type ProviderObservation, type ProviderToolDescriptor } from "./provider-observer.ts";
+import { providerDoctor, type ProviderName, type ProviderObservation, type ProviderToolDescriptor } from "./provider-observer.ts";
 import { isInsideWorkspace } from "./role-policy.ts";
 import type { LaunchedAck } from "./delegation-wait.ts";
 
@@ -218,7 +218,7 @@ export async function personaDoctor(options: PersonaFacadeOptions): Promise<{
   baselineReady: boolean;
   personas: PersonaSummary[];
   discoveries: PersonaDiscovery[];
-  providers: { contextMode: ProviderObservation; jcodemunch: ProviderObservation };
+  providers: Record<ProviderName, ProviderObservation>;
   childExtension: { present: boolean; path: string };
   deficiencies: string[];
   degraded: string[];
@@ -250,7 +250,8 @@ export async function personaDoctor(options: PersonaFacadeOptions): Promise<{
   const childPath = join(options.packageRoot, "extensions", "persona-child.ts");
   if (!existsSync(childPath)) deficiencies.push("child enforcement extension is missing");
   const providers = providerDoctor(options.toolNames ?? [], options.environment, options.toolDescriptors);
-  if (providers.contextMode.availability === "unavailable") degraded.push("context-mode unavailable; bounded native fallback is active");
+  if (providers.capsules.availability === "unavailable") degraded.push("Capsules unavailable; native read/bash/grep output is not captured for capsule_recall/capsule_analyze, bounded native fallback is active");
+  else if (providers.capsules.availability === "failed") degraded.push(`Capsules degraded (${providers.capsules.reason ?? "provider failed"}); bounded native fallback is active`);
   if (providers.jcodemunch.availability === "unavailable") degraded.push("jCodeMunch unavailable; bounded native fallback is active");
   return {
     ready: deficiencies.length === 0,

@@ -1,7 +1,12 @@
 import type { PersonaLedger, ProviderAvailability } from "./ledger.ts";
 import { setProvider } from "./ledger.ts";
 
-export type ProviderName = "contextMode" | "jcodemunch";
+/**
+ * Context providers a persona child observes. Pi Context Capsules is the default
+ * context provider; context-mode is no longer a provider (see isContextModeToolName).
+ */
+export type ProviderName = "capsules" | "jcodemunch";
+export const PROVIDER_NAMES = ["capsules", "jcodemunch"] as const satisfies readonly ProviderName[];
 export type ProviderUseStatus = "used" | "not_applicable" | "degraded" | "unavailable";
 
 export interface ProviderObservation {
@@ -28,15 +33,9 @@ export interface ProviderProbeInput {
 }
 
 const PROVIDER_TOOL_NAMES: Record<ProviderName, ReadonlySet<string>> = {
-  contextMode: new Set([
-    "ctx_execute",
-    "ctx_execute_file",
-    "ctx_index",
-    "ctx_search",
-    "ctx_fetch_and_index",
-    "ctx_batch_execute",
-    "context-mode.search",
-  ]),
+  // Pi Context Capsules model tools: read-only recall/analysis over already-captured
+  // native read/bash/grep evidence (no shell, writes, or network).
+  capsules: new Set(["capsule_recall", "capsule_analyze"]),
   jcodemunch: new Set([
     "jcodemunch_resolve_repo",
     "jcodemunch_get_file_outline",
@@ -56,13 +55,32 @@ const PROVIDER_TOOL_NAMES: Record<ProviderName, ReadonlySet<string>> = {
   ]),
 };
 
+const CONTEXT_MODE_OPERATIONS: ReadonlySet<string> = new Set([
+  "ctx_execute",
+  "ctx_execute_file",
+  "ctx_index",
+  "ctx_search",
+  "ctx_fetch_and_index",
+  "ctx_batch_execute",
+]);
+
+/**
+ * Legacy recognition only. context-mode is disabled for persona children; its tools are
+ * recognized so a runtime that still registers them can be reported as a Capsules
+ * context-owner conflict (Capsules refuses to run beside any context-mode tool).
+ */
+export function isContextModeToolName(toolName: string): boolean {
+  const normalized = toolName.trim().toLowerCase();
+  if (CONTEXT_MODE_OPERATIONS.has(normalized) || normalized === "context-mode.search") return true;
+  if (/^context[-_]?mode(?:_|$)/.test(normalized)) return true;
+  const operation = normalized.match(/^(?:(?:mcp__)?context[-_]?mode(?:__|[:/_]))(ctx_.+)$/)?.[1];
+  return Boolean(operation && CONTEXT_MODE_OPERATIONS.has(operation));
+}
+
 function providerForToolName(toolName: string): ProviderName | undefined {
   const normalized = toolName.trim().toLowerCase();
-  if (PROVIDER_TOOL_NAMES.contextMode.has(normalized)) return "contextMode";
+  if (PROVIDER_TOOL_NAMES.capsules.has(normalized)) return "capsules";
   if (PROVIDER_TOOL_NAMES.jcodemunch.has(normalized)) return "jcodemunch";
-
-  const contextOperation = normalized.match(/^(?:(?:mcp__)?context[-_]?mode(?:__|[:/_]))(ctx_.+)$/)?.[1];
-  if (contextOperation && PROVIDER_TOOL_NAMES.contextMode.has(contextOperation)) return "contextMode";
 
   const codeOperation = normalized.match(/^(?:(?:mcp__)?jcode[-_]?munch(?:__|[:/_]))(?:jcodemunch_)?(.+)$/)?.[1];
   if (codeOperation && PROVIDER_TOOL_NAMES.jcodemunch.has(`jcodemunch_${codeOperation}`)) return "jcodemunch";
@@ -70,7 +88,7 @@ function providerForToolName(toolName: string): ProviderName | undefined {
 }
 
 const TRUSTED_PROVIDER_PROVENANCE: Record<ProviderName, ReadonlySet<string>> = {
-  contextMode: new Set(["context-mode", "context_mode", "contextmode", "mcp:context-mode"]),
+  capsules: new Set(["capsules", "pi-context-capsules", "context-capsules"]),
   jcodemunch: new Set(["jcodemunch", "jcode-munch", "jcode_munch", "mcp:jcodemunch"]),
 };
 
@@ -91,19 +109,25 @@ function observedToolNames(input: ProviderProbeInput): string[] {
   return [...registryNames, ...trustedDescriptorNames];
 }
 
+export const CAPSULES_CONTEXT_OWNER_CONFLICT = "context-owner-conflict: context-mode tools are registered in the same runtime, so Capsules refuses to run; remove context-mode from this persona runtime";
+
 export function detectProviders(input: ProviderProbeInput = {}): Record<ProviderName, ProviderObservation> {
   const names = observedToolNames(input);
   const env = input.environment ?? (typeof process !== "undefined" ? process.env : {});
-  const contextAvailable = env.PI_CONTEXT_MODE_AVAILABLE === "1" || names.some((name) => providerForToolName(name) === "contextMode");
+  const capsulesAvailable = env.PI_CAPSULES_AVAILABLE === "1" || names.some((name) => providerForToolName(name) === "capsules");
+  // Trusted descriptors only ever contribute provider names, so this effectively checks registry names.
+  const contextModeConflict = capsulesAvailable && names.some(isContextModeToolName);
   const codeAvailable = env.PI_JCODEMUNCH_AVAILABLE === "1" || names.some((name) => providerForToolName(name) === "jcodemunch");
   return {
-    contextMode: { name: "contextMode", availability: contextAvailable ? "available" : "unavailable", status: contextAvailable ? "not_applicable" : "unavailable", uses: 0, failures: 0, fallbackUses: 0, reason: contextAvailable ? undefined : "provider not installed or not visible in the runtime registry" },
+    capsules: contextModeConflict
+      ? { name: "capsules", availability: "failed", status: "degraded", uses: 0, failures: 0, fallbackUses: 0, reason: CAPSULES_CONTEXT_OWNER_CONFLICT }
+      : { name: "capsules", availability: capsulesAvailable ? "available" : "unavailable", status: capsulesAvailable ? "not_applicable" : "unavailable", uses: 0, failures: 0, fallbackUses: 0, reason: capsulesAvailable ? undefined : "provider not installed or not visible in the runtime registry" },
     jcodemunch: { name: "jcodemunch", availability: codeAvailable ? "available" : "unavailable", status: codeAvailable ? "not_applicable" : "unavailable", uses: 0, failures: 0, fallbackUses: 0, reason: codeAvailable ? undefined : "provider not installed or not visible in the runtime registry" },
   };
 }
 
 export function observeProviders(ledger: PersonaLedger, observations: Record<ProviderName, ProviderObservation>): void {
-  for (const name of ["contextMode", "jcodemunch"] as const) {
+  for (const name of PROVIDER_NAMES) {
     const observation = observations[name];
     setProvider(ledger, name, {
       availability: observation.availability,
@@ -130,8 +154,12 @@ export class ProviderObserver {
   refresh(input: ProviderProbeInput = {}): void {
     const detected = detectProviders(input);
     for (const name of observedToolNames(input)) this.trustedToolNames.add(name.trim().toLowerCase());
-    for (const name of ["contextMode", "jcodemunch"] as const) {
-      if (detected[name].availability === "available") {
+    for (const name of PROVIDER_NAMES) {
+      if (detected[name].availability === "failed" && this.observations[name].availability !== "failed") {
+        this.observations[name].availability = "failed";
+        this.observations[name].status = "degraded";
+        this.observations[name].reason = detected[name].reason;
+      } else if (detected[name].availability === "available") {
         this.observations[name].availability = "available";
         if (this.observations[name].status === "unavailable") this.observations[name].status = "not_applicable";
         if (!this.observations[name].reason || this.observations[name].reason.includes("not installed")) this.observations[name].reason = detected[name].reason;
@@ -260,6 +288,6 @@ export class ProviderObserver {
   }
 }
 
-export function providerDoctor(toolNames: Iterable<string> = [], environment?: Record<string, string | undefined>, tools?: Iterable<ProviderToolDescriptor>): { contextMode: ProviderObservation; jcodemunch: ProviderObservation } {
+export function providerDoctor(toolNames: Iterable<string> = [], environment?: Record<string, string | undefined>, tools?: Iterable<ProviderToolDescriptor>): Record<ProviderName, ProviderObservation> {
   return detectProviders({ toolNames, environment, tools });
 }

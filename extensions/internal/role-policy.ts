@@ -42,11 +42,16 @@ const PIPE_FILTER = [
 ];
 const READ_ONLY_SHELL_GUIDANCE = "every command in a ;/&&/|| sequence must itself be allowed (no redirects, substitution, or background jobs); pipes may only feed nl, sed -n 'A,Bp', head, tail, wc, sort, uniq, or grep. Revision reads such as `git show <rev>:<path>`, `git ls-tree -r <rev>`, `git diff <a> <b>`, and `git cat-file -p <rev>:<path>` are allowed";
 const SHELL_INTERPRETER = /(?:^|\s)(?:sh|bash|zsh|dash|fish|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh|python(?:\d+(?:\.\d+)*)?|py|node)(?:\s|$)/i;
+// Pi Context Capsules model tools read only evidence already captured from native read/bash/grep:
+// no shell, writes, network, or new file access, so every role may use them.
+const CAPSULES_READ_OPERATION = "capsule_(?:recall|analyze)";
+// Legacy: context-mode is disabled for persona children (Capsules refuses to run beside it), but
+// a host that still exposes it stays inside these gates rather than gaining an unchecked tool.
 const CONTEXT_MODE_READ_OPERATION = "(?:search|index|fetch_and_index)";
 const JCODEMUNCH_READ_OPERATION = "(?:resolve_repo|plan_turn|search_symbols|search_text|get_symbol_source|get_file_outline|find_references|find_importers|get_blast_radius|get_changed_symbols|get_context_bundle|get_ranked_context|assemble_task_context|index_file|index_repo)";
 const JDOCMUNCH_READ_OPERATION = "(?:search_sections|get_toc|get_toc_tree|get_section|get_sections|get_document_outline)";
 const APPROVED_PROVIDER_READ_TOOL = new RegExp(
-  `^(?:ctx_${CONTEXT_MODE_READ_OPERATION}|context[-_]?mode_(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|jcodemunch_${JCODEMUNCH_READ_OPERATION}|mcp__(?:context[-_]?mode)__(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp__jcodemunch__(?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|mcp:(?:context[-_]?mode)[:/](?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp:jcodemunch[:/](?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|jdocmunch_${JDOCMUNCH_READ_OPERATION}|mcp__jdocmunch__(?:jdocmunch_)?${JDOCMUNCH_READ_OPERATION}|mcp:jdocmunch[:/](?:jdocmunch_)?${JDOCMUNCH_READ_OPERATION})$`,
+  `^(?:${CAPSULES_READ_OPERATION}|ctx_${CONTEXT_MODE_READ_OPERATION}|context[-_]?mode_(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|jcodemunch_${JCODEMUNCH_READ_OPERATION}|mcp__(?:context[-_]?mode)__(?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp__jcodemunch__(?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|mcp:(?:context[-_]?mode)[:/](?:ctx_)?${CONTEXT_MODE_READ_OPERATION}|mcp:jcodemunch[:/](?:jcodemunch_)?${JCODEMUNCH_READ_OPERATION}|jdocmunch_${JDOCMUNCH_READ_OPERATION}|mcp__jdocmunch__(?:jdocmunch_)?${JDOCMUNCH_READ_OPERATION}|mcp:jdocmunch[:/](?:jdocmunch_)?${JDOCMUNCH_READ_OPERATION})$`,
   "i",
 );
 // context-mode execute tools run caller-supplied code, so they are gated by input rather than by name:

@@ -1,5 +1,5 @@
 import { ProviderObserver } from "../provider-observer.ts";
-import type { ProviderResult } from "./context-mode.ts";
+import type { ProviderResult } from "./result.ts";
 
 export interface ResolveRepoInput { path: string; }
 export interface StructureInput { repo: string; }

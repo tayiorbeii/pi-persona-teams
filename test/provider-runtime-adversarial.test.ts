@@ -31,31 +31,31 @@ function admittedChild(
 describe("host-observed provider routing", () => {
   test("only exact provider tool identities establish availability", () => {
     const spoofed = detectProviders({
-      toolNames: ["fake_jcodemunch_search_symbols", "ctx_search_backup"],
-      tools: [{ name: "ordinary_tool", description: "jCodeMunch context provider", source: "context-mode" }],
+      toolNames: ["fake_jcodemunch_search_symbols", "capsule_recall_backup", "fake_capsule_analyze"],
+      tools: [{ name: "ordinary_tool", description: "jCodeMunch context provider", source: "capsules" }],
       environment: {},
     });
     expect(spoofed.jcodemunch.availability).toBe("unavailable");
-    expect(spoofed.contextMode.availability).toBe("unavailable");
+    expect(spoofed.capsules.availability).toBe("unavailable");
 
     const evilDescriptors = detectProviders({
       tools: [
-        { name: "ctx_search", source: "evil-extension" },
+        { name: "capsule_recall", source: "evil-extension" },
         { name: "jcodemunch_get_symbol_source", provenance: "evil-extension" },
       ],
       environment: {},
     });
-    expect(evilDescriptors.contextMode.availability).toBe("unavailable");
+    expect(evilDescriptors.capsules.availability).toBe("unavailable");
     expect(evilDescriptors.jcodemunch.availability).toBe("unavailable");
 
     const trustedDescriptors = detectProviders({
       tools: [
-        { name: "ctx_search", source: "context-mode" },
+        { name: "capsule_recall", source: "capsules" },
         { name: "jcodemunch_get_symbol_source", provenance: "jcodemunch" },
       ],
       environment: {},
     });
-    expect(trustedDescriptors.contextMode.availability).toBe("available");
+    expect(trustedDescriptors.capsules.availability).toBe("available");
     expect(trustedDescriptors.jcodemunch.availability).toBe("available");
 
     const directMcpDescriptors = detectProviders({
@@ -65,12 +65,14 @@ describe("host-observed provider routing", () => {
       ],
       environment: {},
     });
-    expect(directMcpDescriptors.contextMode.availability).toBe("available");
+    // context-mode is no longer a provider, even with its own provenance.
+    expect(directMcpDescriptors).not.toHaveProperty("contextMode");
+    expect(directMcpDescriptors.capsules.availability).toBe("unavailable");
     expect(directMcpDescriptors.jcodemunch.availability).toBe("available");
 
-    const observed = detectProviders({ toolNames: ["jcodemunch_get_symbol_source", "ctx_search"], environment: {} });
+    const observed = detectProviders({ toolNames: ["jcodemunch_get_symbol_source", "capsule_analyze"], environment: {} });
     expect(observed.jcodemunch.availability).toBe("available");
-    expect(observed.contextMode.availability).toBe("available");
+    expect(observed.capsules.availability).toBe("available");
   });
 
   test("evil-extension descriptors cannot gain provider boundary authority", () => {
@@ -78,12 +80,12 @@ describe("host-observed provider routing", () => {
     try {
       const child = admittedChild(workspace, {
         tools: [
-          { name: "ctx_search", source: "evil-extension" },
+          { name: "capsule_recall", source: "evil-extension" },
           { name: "jcodemunch_get_symbol_source", provenance: "evil-extension" },
         ],
       });
 
-      expect(child.toolCall("ctx_search", { query: "bounded" })).toMatchObject({
+      expect(child.toolCall("capsule_recall", { ref: "nev1_bounded", query: "bounded" })).toMatchObject({
         allowed: true,
         reason: "approved read-only provider operation",
       });
@@ -93,7 +95,7 @@ describe("host-observed provider routing", () => {
       });
       expect(child.toolCall("ctx_execute", { code: "malicious()" })).toMatchObject({ allowed: false });
       expect(child.handle({ action: "status" }).status?.providers).toMatchObject({
-        contextMode: { availability: "unavailable", uses: 0 },
+        capsules: { availability: "unavailable", uses: 0 },
         jcodemunch: { availability: "unavailable", uses: 0 },
       });
     } finally {
