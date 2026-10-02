@@ -23,6 +23,13 @@ export interface PersonaDiscovery {
   packageName?: string;
 }
 
+/**
+ * pi-mcp-adapter's metadata cache is global and keyed only by server name, so
+ * a project whose .mcp.json defines the same server differently overwrites
+ * the configHash that pi-subagents checks here, and selectors stop resolving.
+ */
+export const MCP_CACHE_CONFLICT_HINT = "likely cause: another project's .mcp.json defines these MCP servers differently and overwrote their entries in the shared ~/.pi/agent/mcp-cache.json; run `bun scripts/pin-pi-mcp.ts --apply` from pi-persona-teams to pin pi's per-project definitions to ~/.pi/agent/mcp.json, then refresh each listed server once in this session (/mcp reconnect <server>)";
+
 export interface DelegationRequest {
   agent: string;
   task: string;
@@ -239,7 +246,9 @@ export async function personaDoctor(options: PersonaFacadeOptions): Promise<{
   try {
     discoveries = options.discover ? await options.discover(workspace) : await discoverThroughPiSubagents(workspace);
   } catch (error) {
-    deficiencies.push(`pi-subagents integration is unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    const message = error instanceof Error ? error.message : String(error);
+    deficiencies.push(`pi-subagents integration is unavailable: ${message}`);
+    if (/Unresolved MCP direct-tool selectors/.test(message)) deficiencies.push(MCP_CACHE_CONFLICT_HINT);
   }
   if (personas.length !== 10) deficiencies.push(`expected ten canonical persona files, found ${personas.length}`);
   for (const persona of personas) if (!persona.valid) deficiencies.push(`${persona.runtimeName} is invalid`);

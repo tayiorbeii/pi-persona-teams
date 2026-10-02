@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Shared MCP cache conflicts across projects
+
+- Persona preflight intermittently failed with `Unresolved MCP direct-tool selectors`: pi-mcp-adapter's global metadata cache is keyed only by server name, and project `.mcp.json` files that define `context-mode`, `jcodemunch`, or `jdocmunch` differently keep overwriting the config hash pi-subagents checks.
+- `scripts/pin-pi-mcp.ts` (dry run by default, `--apply` to write) pins pi's per-project definitions to `~/.pi/agent/mcp.json` with gitignored `.pi/mcp.json` overrides. It only writes inside existing pi project roots and never writes a Git-tracked file.
+- `persona_team doctor` now adds a hint pointing to that fix when it sees this error.
+
 ### Per-run persona model selection
 
 - `persona_team run` accepts `model` (`provider/id`, optional `:thinking` suffix), forwarded to both the pi-subagents preflight and the delegation request. Without it, a persona keeps its configured model or inherits the parent's.

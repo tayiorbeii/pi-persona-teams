@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { packagePreflight, personaDoctor } from "../extensions/internal/persona-facade.ts";
+import { MCP_CACHE_CONFLICT_HINT, packagePreflight, personaDoctor } from "../extensions/internal/persona-facade.ts";
 
 const root = join(import.meta.dir, "..");
 const canonicalDiscoveries = [
@@ -52,4 +52,13 @@ test("doctor accepts an in-checkout attestation directory", async () => {
     attestationDir: join(root, ".pi-persona", "attestations"),
   });
   expect(result.deficiencies.some((item) => item.includes("resolves outside the assigned workspace"))).toBe(false);
+});
+
+test("doctor points unresolved MCP selectors at the shared-cache pin fix", async () => {
+  const unresolved = () => { throw new Error("pi-subagents preflight could not resolve persona-team.qa-lead: Unresolved MCP direct-tool selectors: jcodemunch/search_text."); };
+  const result = await personaDoctor({ packageRoot: root, workspace: root, discover: unresolved, attestationDir: join(root, ".pi-persona", "attestations") });
+  expect(result.ready).toBe(false);
+  expect(result.deficiencies).toContain(MCP_CACHE_CONFLICT_HINT);
+  const other = await personaDoctor({ packageRoot: root, workspace: root, discover: () => { throw new Error("preflight subpath missing"); }, attestationDir: join(root, ".pi-persona", "attestations") });
+  expect(other.deficiencies).not.toContain(MCP_CACHE_CONFLICT_HINT);
 });
