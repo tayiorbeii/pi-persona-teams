@@ -91,6 +91,7 @@ function toolParameters(): Record<string, unknown> {
       mode: { type: "string", enum: ["wait", "launch"], description: "launch returns a run handle as soon as the bridge accepts the attempt; wait (default) blocks for terminal completion." },
       workspace: { type: "string", description: "Directory the persona works in and is scoped to (default: the parent's cwd). Point this at the checkout or frozen revision being researched, e.g. a /tmp worktree; the child's cwd, retrieval providers, write boundary, and attestations all follow it." },
       verificationPolicy: { type: "string", enum: ["advisory", "strict"], description: "advisory (default) returns completed output with explicit warnings when nonessential evidence is missing or mismatched; strict fails closed." },
+      model: { type: "string", minLength: 1, description: "Model for the persona child as provider/id, optionally with a :thinking suffix (e.g. anthropic/claude-sonnet-5 or openai-codex/gpt-6-luna:high). Default: the persona's configured model, else the parent's current model." },
     },
     required: ["action"],
   };
@@ -131,7 +132,7 @@ export interface PersonaDelegationIdentity {
  * `version` key: bridges do not accept it in requests and do not echo one in
  * responses.
  */
-export function buildDelegationRequest(input: PersonaDelegationIdentity & { agent: string; task: string; context: "fresh"; workspace: string; timeoutMs: number }): Record<string, unknown> {
+export function buildDelegationRequest(input: PersonaDelegationIdentity & { agent: string; task: string; context: "fresh"; workspace: string; timeoutMs: number; model?: string }): Record<string, unknown> {
   return {
     requestId: input.requestId,
     ownerRunId: input.ownerRunId,
@@ -140,6 +141,7 @@ export function buildDelegationRequest(input: PersonaDelegationIdentity & { agen
     task: input.task,
     context: input.context,
     cwd: input.workspace,
+    ...(input.model !== undefined ? { model: input.model } : {}),
     artifacts: true,
     timeoutMs: input.timeoutMs,
     result: { kind: "text" as const },
@@ -172,18 +174,35 @@ export function idempotencyKeyFor(request: Pick<DelegationRequest, "agent" | "ta
   return createHash("sha256").update(`${request.agent}\u0000${request.task}`).digest("hex").slice(0, 24);
 }
 
-async function startDelegation(pi: any, workspace: string, request: DelegationRequest, key: string): Promise<DelegationResult> {
+export interface ParentModel {
+  provider: string;
+  id: string;
+}
+
+/** The parent session's active model, in the shape pi-subagents uses to resolve inherited child models. */
+export function parentModelFrom(model: unknown): ParentModel | undefined {
+  if (!model || typeof model !== "object") return undefined;
+  const { provider, id } = model as { provider?: unknown; id?: unknown };
+  return typeof provider === "string" && provider && typeof id === "string" && id ? { provider, id } : undefined;
+}
+
+async function startDelegation(pi: any, workspace: string, request: DelegationRequest, key: string, parentModel: ParentModel | undefined): Promise<DelegationResult> {
   const verificationPolicy = request.verificationPolicy ?? "advisory";
   const task = verificationPolicy === "strict"
     ? `${request.task}\n\nStrict verification requested: collect persona_contract.status, activate and disposition each required method, then complete with host-verifiable evidence.`
     : request.task;
   const preflight = await loadPiSubagentsPreflight();
   if (!preflight.resolveSubagentLaunchContract) throw new Error("pi-subagents preflight API is unavailable");
+  // The bridge resolves the child's model from the override, the persona's
+  // own model, then the parent's active model; preflight must see the same
+  // inputs or its launchContractDigest can never match the launched child.
   const launch = (await preflight.resolveSubagentLaunchContract({
     agent: request.agent,
     task,
     context: request.context,
     cwd: workspace,
+    ...(request.model !== undefined ? { model: request.model } : {}),
+    ...(parentModel ? { parentModel } : {}),
     availableModels: typeof pi.modelRegistry?.getAvailable === "function" ? pi.modelRegistry.getAvailable() : [],
   })) as {
     ok: boolean;
@@ -227,6 +246,7 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
     task,
     context: request.context,
     workspace,
+    ...(request.model !== undefined ? { model: request.model } : {}),
     timeoutMs: resolveChildTimeoutMs(typeof delegation.SUBAGENT_DELEGATION_UPDATE_EVENT === "string" ? undefined : waitMs),
   });
 
@@ -269,8 +289,9 @@ async function startDelegation(pi: any, workspace: string, request: DelegationRe
  * the same agent+task) attaches to the original attempt instead of launching
  * a duplicate child.
  */
-export async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest): Promise<DelegationResult> {
-  const key = `${request.verificationPolicy ?? "advisory"}:${workspace}:${idempotencyKeyFor(request)}`;
+export async function delegateThroughPiSubagents(pi: any, workspace: string, request: DelegationRequest, parentModel?: ParentModel): Promise<DelegationResult> {
+  // Runs on different models are different children even under one runKey.
+  const key = `${request.verificationPolicy ?? "advisory"}:${request.model ?? ""}:${workspace}:${idempotencyKeyFor(request)}`;
   const existing = pendingDelegations.get(key);
   if (existing) {
     const ack = launchedAcks.get(key);
@@ -283,7 +304,7 @@ export async function delegateThroughPiSubagents(pi: any, workspace: string, req
     }
     return existing;
   }
-  const run = startDelegation(pi, workspace, request, key);
+  const run = startDelegation(pi, workspace, request, key, parentModel);
   pendingDelegations.set(key, run);
   run.catch(() => {
     // Launch-mode callers may never await this promise; keep the rejection
@@ -304,7 +325,7 @@ export default function personaParentExtension(pi: any): void {
     label: "Persona Team",
     description: "List, diagnose, or run a canonical pi-persona-teams persona.",
     parameters: toolParameters(),
-    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; workspace?: string; responseTimeoutMs?: number; ackTimeoutMs?: number; progressTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch"; verificationPolicy?: "advisory" | "strict" }) {
+    async execute(_toolCallId: string, params: { action: "list" | "doctor" | "run"; persona?: string; task?: string; workspace?: string; responseTimeoutMs?: number; ackTimeoutMs?: number; progressTimeoutMs?: number; runKey?: string; mode?: "wait" | "launch"; verificationPolicy?: "advisory" | "strict"; model?: string }, _signal?: unknown, _onUpdate?: unknown, ctx?: { model?: unknown }) {
       if (params.action === "list") {
         const result = listPersonas(root);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
@@ -333,12 +354,19 @@ export default function personaParentExtension(pi: any): void {
         const result = { accepted: false, errors: ["run requires a bounded task"], runtimeName };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
       }
+      const model = params.model?.trim();
+      if (params.model !== undefined && !model) {
+        const result = { accepted: false, errors: ["model must be a non-empty provider/id"], runtimeName };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
+      }
+      const parentModel = parentModelFrom(ctx?.model);
       // Capture the wall-clock start before entering the delegation seam so a
       // response cannot reuse an attestation persisted by an earlier attempt.
       const attemptStartedAt = Date.now();
       const result = await runPersona({
         packageRoot: root,
         workspace,
+        ...(model ? { model } : {}),
         ...(params.responseTimeoutMs !== undefined ? { responseTimeoutMs: params.responseTimeoutMs } : {}),
         ...(params.ackTimeoutMs !== undefined ? { ackTimeoutMs: params.ackTimeoutMs } : {}),
         ...(params.progressTimeoutMs !== undefined ? { progressTimeoutMs: params.progressTimeoutMs } : {}),
@@ -348,7 +376,7 @@ export default function personaParentExtension(pi: any): void {
         attemptStartedAt,
         requireAttemptBinding: process.env.PI_PERSONA_REQUIRE_ATTEMPT_BINDING !== "0",
         verificationPolicy: params.verificationPolicy ?? "advisory",
-        delegate: (request) => delegateThroughPiSubagents(pi, workspace, request),
+        delegate: (request) => delegateThroughPiSubagents(pi, workspace, request, parentModel),
       }, runtimeName, task);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }], details: result };
     },

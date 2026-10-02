@@ -210,3 +210,51 @@ describe("delegation idempotency", () => {
     expect(waitResult.output).toBe("output-child-run-e2e");
   });
 });
+
+describe("persona model selection", () => {
+  test("a model override reaches both preflight and the bridge, and preflight sees the parent model", async () => {
+    const bus = new FakeDelegationBus();
+    const parentModel = { provider: "openai-codex", id: "gpt-6-luna" };
+    const run = runPersona({
+      packageRoot: root,
+      workspace: root,
+      model: "anthropic/claude-sonnet-5",
+      delegate: (request) => delegateThroughPiSubagents(fakePi(bus), root, request, parentModel),
+    }, "persona-team.qa-lead", "model override task");
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 1));
+    const emitted = bus.requests()[0];
+    expect(emitted.model).toBe("anthropic/claude-sonnet-5");
+    const preflight = preflightInputs.find((input) => input.task === "model override task");
+    expect(preflight?.model).toBe("anthropic/claude-sonnet-5");
+    expect(preflight?.parentModel).toEqual(parentModel);
+    settleCompleted(bus, emitted.requestId, emitted.nodeId, "child-run-model");
+    expect((await run).runId).toBe("child-run-model");
+  });
+
+  test("without an override, no model is sent and preflight still resolves the inherited parent model", async () => {
+    const bus = new FakeDelegationBus();
+    const parentModel = { provider: "openai-codex", id: "gpt-6-luna" };
+    const run = delegateThroughPiSubagents(fakePi(bus), "/tmp/w", { agent: "persona-team.qa-lead", task: "inherited model task", context: "fresh" }, parentModel);
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 1));
+    const emitted = bus.requests()[0];
+    expect("model" in emitted).toBe(false);
+    const preflight = preflightInputs.find((input) => input.task === "inherited model task");
+    expect("model" in (preflight ?? {})).toBe(false);
+    expect(preflight?.parentModel).toEqual(parentModel);
+    settleCompleted(bus, emitted.requestId, emitted.nodeId, "child-run-inherited");
+    await run;
+  });
+
+  test("the same runKey on different models launches separate children", async () => {
+    const bus = new FakeDelegationBus();
+    const base: DelegationRequest = { agent: "persona-team.qa-lead", task: "compare models", context: "fresh", idempotencyKey: "model-compare" };
+    const first = delegateThroughPiSubagents(fakePi(bus), "/tmp/w", { ...base, model: "anthropic/claude-sonnet-5" });
+    const second = delegateThroughPiSubagents(fakePi(bus), "/tmp/w", { ...base, model: "openai-codex/gpt-6-luna" });
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 1));
+    const emitted = bus.requests();
+    expect(emitted.map((entry) => entry.model)).toEqual(["anthropic/claude-sonnet-5", "openai-codex/gpt-6-luna"]);
+    for (const entry of emitted) settleCompleted(bus, entry.requestId, entry.nodeId, `child-${entry.model}`);
+    const [a, b] = await Promise.all([first, second]);
+    expect(a.runId).not.toBe(b.runId);
+  });
+});

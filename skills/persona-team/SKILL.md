@@ -5,7 +5,7 @@ description: Use canonical persona-team agents for bounded expert advice and ind
 
 # Persona Team
 
-Use one canonical `persona-team.<slug>` agent. If `persona_team` is not in the tool list but `load_tools` is, call `load_tools` with `groups: ["personas"]` first. `persona_team action=list` and `persona_team action=doctor` are the preflight surface: they list personas and authorities and report provider readiness. `persona_team action=run` starts a bounded child and supports non-blocking `mode: "launch"`, idempotent `runKey` attach, per-call sliding `progressTimeoutMs`, and `verificationPolicy` (`advisory` default; `strict` opt-in); advisory output is useful but explicitly unverified when evidence is incomplete. The plain `subagent` tool remains the alternative path. Do not start a second launcher.
+Use one canonical `persona-team.<slug>` agent. If `persona_team` is not in the tool list but `load_tools` is, call `load_tools` with `groups: ["personas"]` first. `persona_team action=list` and `persona_team action=doctor` are the preflight surface: they list personas and authorities and report provider readiness. `persona_team action=run` starts a bounded child and supports non-blocking `mode: "launch"`, idempotent `runKey` attach, per-call sliding `progressTimeoutMs`, an optional `model` override (`provider/id`, optional `:thinking` suffix; default: the persona's model, else the parent's), and `verificationPolicy` (`advisory` default; `strict` opt-in); advisory output is useful but explicitly unverified when evidence is incomplete. The plain `subagent` tool remains the alternative path. Do not start a second launcher.
 
 ## Bounded dispatch
 

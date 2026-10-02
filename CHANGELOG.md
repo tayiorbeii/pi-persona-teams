@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Per-run persona model selection
+
+- `persona_team run` accepts `model` (`provider/id`, optional `:thinking` suffix), forwarded to both the pi-subagents preflight and the delegation request. Without it, a persona keeps its configured model or inherits the parent's.
+- Preflight now receives the parent session's active model. Personas without a configured model inherit it at launch, so preflight previously hashed an empty model set and every such run reported "launchContractDigest does not match the immutable preflight contract".
+- The in-flight dedupe key includes the model, so the same `runKey` on two models launches two children.
+
 ### Pi Context Capsules replaces context-mode
 
 - Pi Context Capsules is the persona context provider (`ProviderName` `capsules`): detection from `capsule_recall`/`capsule_analyze`, trusted `capsules` provenance, or `PI_CAPSULES_AVAILABLE=1`; ledger, attestation, and doctor reporting; a degraded doctor message when Capsules is absent; and a `context-owner-conflict` report when context-mode tools are registered beside it.

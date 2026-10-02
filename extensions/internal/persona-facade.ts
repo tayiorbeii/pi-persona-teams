@@ -27,6 +27,8 @@ export interface DelegationRequest {
   agent: string;
   task: string;
   context: "fresh";
+  /** Model override for the child ("provider/id", optionally ":thinking"); default: the persona's model, else the parent's. */
+  model?: string;
   acceptance?: unknown;
   /** Legacy alias for sliding inactivity; older bridges use it as a fallback total wait. */
   responseTimeoutMs?: number;
@@ -103,6 +105,8 @@ export interface PersonaFacadeOptions {
   mode?: "wait" | "launch";
   /** Verification policy; advisory is the default for persona_team. */
   verificationPolicy?: "advisory" | "strict";
+  /** Model override forwarded to the delegate seam. */
+  model?: string;
   /** How long launch mode waits for the bridge acceptance ack before failing. */
   launchAckTimeoutMs?: number;
   toolNames?: string[];
@@ -351,6 +355,7 @@ export async function runPersona(options: PersonaFacadeOptions, runtimeName: str
     agent: runtimeName,
     task,
     context: "fresh",
+    ...(options.model !== undefined ? { model: options.model } : {}),
     ...(options.responseTimeoutMs !== undefined ? { responseTimeoutMs: options.responseTimeoutMs } : {}),
     ...(options.ackTimeoutMs !== undefined ? { ackTimeoutMs: options.ackTimeoutMs } : {}),
     ...(options.progressTimeoutMs !== undefined ? { progressTimeoutMs: options.progressTimeoutMs } : {}),
