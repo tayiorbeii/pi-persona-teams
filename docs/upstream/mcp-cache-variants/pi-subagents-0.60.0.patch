@@ -1,0 +1,57 @@
+--- a/src/runs/shared/mcp-direct-tool-allowlist.ts
++++ b/src/runs/shared/mcp-direct-tool-allowlist.ts
+@@ -88,6 +88,7 @@
+ interface MetadataCache {
+ 	version: number;
+ 	servers: Record<string, ServerCacheEntry>;
++	variants?: Record<string, Record<string, ServerCacheEntry>>;
+ }
+ 
+ export interface McpDirectToolResolution {
+@@ -119,8 +120,8 @@
+ 	if (!cache) return { selections: [], unresolvedSelectors: selectors };
+ 	const validMetadata: Record<string, ServerCacheEntry> = {};
+ 	for (const [serverName, definition] of Object.entries(resolvedConfig.mcpServers)) {
+-		const serverCache = cache.servers[serverName];
+-		if (isServerCacheValid(serverCache, definition)) validMetadata[serverName] = serverCache;
++		const serverCache = selectServerCacheEntry(cache, serverName, definition);
++		if (serverCache && isServerCacheValid(serverCache, definition)) validMetadata[serverName] = serverCache;
+ 	}
+ 	const grant = planMcpDirectToolGrant({
+ 		selectors,
+@@ -160,9 +161,34 @@
+ 		const entry = parseServerCacheEntry(value);
+ 		if (entry) servers[name] = entry;
+ 	}
+-	return { version: CACHE_VERSION, servers };
++	// pi-mcp-adapter also keeps each config's entry under variants[server][configHash],
++	// because projects can define the same server name differently.
++	const variants: Record<string, Record<string, ServerCacheEntry>> = {};
++	if (isRecord(parsed.variants)) {
++		for (const [name, byHash] of Object.entries(parsed.variants)) {
++			if (!isRecord(byHash)) continue;
++			for (const [hash, value] of Object.entries(byHash)) {
++				const entry = parseServerCacheEntry(value);
++				if (entry?.configHash === hash) (variants[name] ??= {})[hash] = entry;
++			}
++		}
++	}
++	return { version: CACHE_VERSION, servers, variants };
+ }
+ 
++/** The top-level entry when it matches this definition, else the variant cached for its config. */
++function selectServerCacheEntry(cache: MetadataCache, serverName: string, definition: ServerEntry): ServerCacheEntry | undefined {
++	const entry = cache.servers[serverName];
++	let configHash: string;
++	try {
++		configHash = computeMcpServerHash(definition);
++	} catch {
++		return entry;
++	}
++	if (entry?.configHash === configHash) return entry;
++	return cache.variants?.[serverName]?.[configHash] ?? entry;
++}
++
+ function parseServerCacheEntry(value: unknown): ServerCacheEntry | undefined {
+ 	if (!isRecord(value)) return undefined;
+ 	if (value.configHash !== undefined && typeof value.configHash !== "string") return undefined;

@@ -1,0 +1,74 @@
+--- a/metadata-cache.ts
++++ b/metadata-cache.ts
+@@ -60,11 +60,13 @@
+   mkdirSync(dir, { recursive: true });
+ 
+   let merged: MetadataCache = { version: CACHE_VERSION, servers: {} };
++  let variants: CacheVariants = {};
+   try {
+     if (existsSync(cachePath)) {
+-      const existing = JSON.parse(readFileSync(cachePath, "utf-8")) as MetadataCache;
++      const existing = JSON.parse(readFileSync(cachePath, "utf-8")) as MetadataCache & { variants?: CacheVariants };
+       if (existing && existing.version === CACHE_VERSION && existing.servers) {
+         merged.servers = { ...existing.servers };
++        variants = recordVariants(existing.variants ?? {}, existing.servers);
+       }
+     }
+   } catch {
+@@ -73,12 +75,55 @@
+ 
+   merged.version = CACHE_VERSION;
+   merged.servers = { ...merged.servers, ...cache.servers };
++  // `servers` stays last-writer-wins for existing readers. Projects can define
++  // the same server name differently, so each config's entry is also kept
++  // under its configHash; otherwise each project's session evicts the others.
++  variants = recordVariants(variants, cache.servers);
+ 
+   const tmpPath = `${cachePath}.${process.pid}.tmp`;
+-  writeFileSync(tmpPath, JSON.stringify(merged), "utf-8");
++  writeFileSync(tmpPath, JSON.stringify({ ...merged, variants }), "utf-8");
+   renameSync(tmpPath, cachePath);
+ }
+ 
++/** Per-server cache entries keyed by configHash: `variants[server][configHash]`. */
++export type CacheVariants = Record<string, Record<string, ServerCacheEntry>>;
++
++/** Distinct configs kept per server name; the least recently cached are dropped first. */
++export const MAX_CACHE_VARIANTS_PER_SERVER = 8;
++
++function recordVariants(variants: CacheVariants, servers: Record<string, ServerCacheEntry>): CacheVariants {
++  const next: CacheVariants = { ...variants };
++  for (const [name, entry] of Object.entries(servers)) {
++    if (!entry || typeof entry.configHash !== "string") continue;
++    const kept = Object.entries({ ...next[name], [entry.configHash]: entry })
++      .sort(([, a], [, b]) => (b.cachedAt ?? 0) - (a.cachedAt ?? 0))
++      .slice(0, MAX_CACHE_VARIANTS_PER_SERVER);
++    next[name] = Object.fromEntries(kept);
++  }
++  return next;
++}
++
++/**
++ * The cached entry for one server definition: the top-level entry when its
++ * configHash matches, else the variant recorded for that config.
++ */
++export function selectServerCacheEntry(
++  cache: (MetadataCache & { variants?: CacheVariants }) | null | undefined,
++  serverName: string,
++  definition: ServerEntry,
++  environment: NodeJS.ProcessEnv = process.env,
++): ServerCacheEntry | undefined {
++  const entry = cache?.servers[serverName];
++  let configHash: string;
++  try {
++    configHash = computeServerHash(definition, environment);
++  } catch {
++    return entry;
++  }
++  if (entry?.configHash === configHash) return entry;
++  return cache?.variants?.[serverName]?.[configHash] ?? entry;
++}
++
+ export function computeServerHash(definition: ServerEntry, environment: NodeJS.ProcessEnv = process.env): string {
+   // Hash only fields that affect server identity and tool/resource output.
+   // Exclude lifecycle, idleTimeout, requestTimeoutMs, debug — those are runtime behavior settings
