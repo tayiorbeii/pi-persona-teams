@@ -19,6 +19,7 @@ function admittedChild(
     personaPath,
     workspace,
     attestationDir: join(workspace, "attestations"),
+    verificationPolicy: "strict",
     ...providerInput,
   });
   const status = child.handle({ action: "status" });
@@ -153,7 +154,11 @@ describe("host-observed provider routing", () => {
         workspace,
         attestationDir: join(workspace, "attestations"),
         toolNames: ["jcodemunch_get_symbol_source"],
+        verificationPolicy: "strict",
       });
+      for (const method of writer.handle({ action: "status" }).status?.requiredMethods ?? []) {
+        expect(writer.handle({ action: "activate", method: method.id, plannedApplication: `Apply ${method.id} before strict source reads.` }).ok).toBe(true);
+      }
       const source = join(workspace, "src", "Window.swift");
       expect(writer.toolCall("read", { path: source, offset: 1, limit: 160 })).toMatchObject({ allowed: true });
       expect(writer.toolCall("read", { path: source, offset: 1 })).toMatchObject({ allowed: false });

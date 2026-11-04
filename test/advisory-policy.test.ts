@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventEmitter } from "node:events";
-import { createPersonaChildRuntimeFromEnvironment } from "../extensions/persona-child.ts";
+import { PersonaChildRuntime, createPersonaChildRuntimeFromEnvironment } from "../extensions/persona-child.ts";
 import { waitForDelegationResponse } from "../extensions/internal/delegation-wait.ts";
 import { runPersona } from "../extensions/internal/persona-facade.ts";
 import { ledgerPersistencePath } from "../extensions/internal/ledger.ts";
@@ -80,6 +80,52 @@ describe("expertise-first verification", () => {
       expect(child.attestation()).toBeUndefined();
     } finally {
       rmSync(ledgerPersistencePath(childIdentity), { force: true });
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("advisory reviewers can read external source and handoffs without a provider failure", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "persona-advisory-reads-"));
+    try {
+      const child = new PersonaChildRuntime({
+        identity: { runtimeName, runId: "advisory-reads", childIndex: 0 },
+        personaPath: join(root, "agents", "staff-reviewer.md"),
+        workspace,
+        toolNames: ["jcodemunch_get_symbol_source"],
+      });
+      const path = join(workspace, "..", "external-source.ts");
+      expect(child.toolCall("read", { path }).allowed).toBe(true);
+      expect(child.toolCall("read", { path }).allowed).toBe(true);
+      expect(child.toolCall("context-mode_ctx_execute_file", {
+        path, language: "javascript", code: "console.log(FILE_CONTENT.length)",
+      }).allowed).toBe(true);
+      expect(child.toolCall("context-mode_ctx_execute_file", {
+        path, language: "javascript", code: "require('fs').writeFileSync('x', '')",
+      }).allowed).toBe(false);
+      expect(child.toolCall("context-mode_ctx_execute_file", {
+        language: "javascript", code: "console.log(FILE_CONTENT.length)",
+      }).allowed).toBe(false);
+      expect(child.toolCall("edit", { path, oldText: "a", newText: "b" }).allowed).toBe(false);
+      expect(child.status().providers.native).toMatchObject({ uses: 2, fallbackUses: 0 });
+    } finally {
+      rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("advisory writers can read external inputs without gaining write ownership", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "persona-advisory-writer-"));
+    try {
+      const child = new PersonaChildRuntime({
+        identity: { runtimeName: "persona-team.implementation-engineer", runId: "advisory-writer", childIndex: 0 },
+        personaPath: join(root, "agents", "implementation-engineer.md"),
+        workspace,
+        toolNames: ["jcodemunch_get_symbol_source"],
+      });
+      const path = join(workspace, "..", "external-source.ts");
+      expect(child.toolCall("read", { path }).allowed).toBe(true);
+      expect(child.toolCall("write", { path, content: "replacement" }).allowed).toBe(false);
+      expect(child.toolCall("write", { path: join(workspace, "source.ts"), content: "replacement" }).allowed).toBe(true);
+    } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
   });

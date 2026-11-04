@@ -14,6 +14,7 @@ function activatedRuntime(role: "implementation-engineer" | "staff-reviewer", wo
     identity: { runtimeName: `persona-team.${role}`, runId: `role-policy-${role}-${runSequence++}`, childIndex: 0 },
     personaPath: join(root, "agents", `${role}.md`),
     workspace,
+    verificationPolicy: "strict",
     attestationDir: join(root, ".tmp-attestations"),
   });
   expect(runtime.handle({ action: "status" }).ok).toBe(true);

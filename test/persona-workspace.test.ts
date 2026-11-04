@@ -30,11 +30,12 @@ test("the delegation launches the child in the targeted workspace", () => {
   expect(request.cwd).toBe(external);
 });
 
-test("a persona scoped to an external checkout can research it but not the parent repository", () => {
+test("a strict persona scoped to an external checkout can research it but not the parent repository", () => {
   const runtime = new PersonaChildRuntime({
     identity: { runtimeName: "persona-team.staff-reviewer", runId: `workspace-${Date.now()}`, childIndex: 0 },
     personaPath: join(root, "agents", "staff-reviewer.md"),
     workspace: external,
+    verificationPolicy: "strict",
     attestationDir: join(external, ".pi-persona", "attestations"),
   });
   expect(runtime.handle({ action: "status" }).ok).toBe(true);

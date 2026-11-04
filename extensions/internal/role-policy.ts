@@ -268,7 +268,7 @@ function commandAllowedForImplementation(command: string): boolean {
 }
 
 // context-mode shell runs outside the persona's bash hook, so every role gets the read-only command gate here.
-function evaluateContextModeExecute(operation: string, input: Record<string, unknown>, workspace: string): { allowed: boolean; reason: string } {
+function evaluateContextModeExecute(operation: string, input: Record<string, unknown>, workspace: string, allowExternalReads = false): { allowed: boolean; reason: string } {
   if (input.cwd !== undefined && (typeof input.cwd !== "string" || !isInsideRepository(workspace, input.cwd))) {
     return { allowed: false, reason: "context-mode cwd must stay inside the assigned repository" };
   }
@@ -285,10 +285,15 @@ function evaluateContextModeExecute(operation: string, input: Record<string, unk
     return { allowed: true, reason: "bounded read-only batch in assigned workspace" };
   }
 
+  // Advisory personas defer read access to the host and context-mode permission rules.
+  // This does not relax cwd, analysis-code capabilities, or write ownership.
   if (operation === "execute_file") {
     const path = input.path;
-    if (typeof path !== "string" || path.trim() === "" || !isInsideRepository(workspace, path)) {
-      return { allowed: false, reason: "context-mode execute_file path must be explicit and inside the assigned repository; ask the parent to place external handoff inputs inside the checkout rather than /tmp" };
+    if (typeof path !== "string" || path.trim() === "") {
+      return { allowed: false, reason: "context-mode execute_file requires an explicit file path" };
+    }
+    if (!allowExternalReads && !isInsideRepository(workspace, path)) {
+      return { allowed: false, reason: "strict context-mode execute_file reads must stay inside the assigned repository" };
     }
   }
 
@@ -316,7 +321,7 @@ export function evaluateToolCall(
   ledger: PersonaLedger,
   tool: ToolCall,
   workspace: string,
-  options: { skipMethodGate?: boolean; assignedOutputPath?: string; attestationDir?: string } = {},
+  options: { skipMethodGate?: boolean; allowExternalReads?: boolean; assignedOutputPath?: string; attestationDir?: string } = {},
 ): PolicyDecision {
   const substantive = isSubstantiveCall(tool);
   const missing = missingActivations(ledger);
@@ -331,7 +336,7 @@ export function evaluateToolCall(
   if (APPROVED_PROVIDER_READ_TOOL.test(tool.toolName)) return { allowed: true, reason: "approved read-only provider operation", substantive };
   const executeOperation = tool.toolName.match(CONTEXT_MODE_EXECUTE_TOOL)?.[1]?.toLowerCase();
   if (executeOperation) {
-    const decision = evaluateContextModeExecute(executeOperation, input, workspace);
+    const decision = evaluateContextModeExecute(executeOperation, input, workspace, options.allowExternalReads);
     recordPolicyEvent(ledger, { toolName: tool.toolName, inputSummary: summarizeInput(input), action: decision.allowed ? "allowed" : "blocked", reason: decision.reason });
     return { ...decision, substantive };
   }

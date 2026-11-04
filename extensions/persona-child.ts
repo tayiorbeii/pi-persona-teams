@@ -146,7 +146,7 @@ export class PersonaChildRuntime {
     const exactEditRead = /^(?:read|read_file)$/i.test(toolName)
       && this.persona.contract.authority === "implementation-writer"
       && isBoundedEditableSourceRead(this.workspace, input);
-    if (isNativeCodeRead(toolName, input) && !exactEditRead && this.providerObserver.availability("jcodemunch") !== "unavailable") {
+    if (this.verificationPolicy === "strict" && isNativeCodeRead(toolName, input) && !exactEditRead && this.providerObserver.availability("jcodemunch") !== "unavailable") {
       if (this.providerObserver.shouldRedirect("jcodemunch", fingerprint)) {
         const reason = "jCodeMunch is available for this code-orientation operation; use it before broad native exploration";
         recordPolicyEvent(this.ledger, { toolName, inputSummary: fingerprint.slice(0, 160), action: "blocked", reason });
@@ -159,7 +159,7 @@ export class PersonaChildRuntime {
         return { allowed: false, reason, substantive: true };
       }
     }
-    const decision = evaluateToolCall(this.ledger, { toolName, input }, this.workspace, { skipMethodGate: this.verificationPolicy === "advisory", assignedOutputPath: this.assignedOutputPath, attestationDir: this.attestationDir });
+    const decision = evaluateToolCall(this.ledger, { toolName, input }, this.workspace, { skipMethodGate: this.verificationPolicy === "advisory", allowExternalReads: this.verificationPolicy === "advisory", assignedOutputPath: this.assignedOutputPath, attestationDir: this.attestationDir });
     if (decision.allowed) {
       const provider = this.providerObserver.observeToolCall(toolName, fingerprint, correlationId);
       if (!provider && /^(?:read|read_file|grep|find|glob|bash|shell|git_)/i.test(toolName)) {
